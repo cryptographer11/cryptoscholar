@@ -53,12 +53,17 @@ def _cache_set(key: str, value: object) -> None:
 
 
 def _get(url: str, params: dict | None = None, retries: int = 3) -> dict:
-    """GET with retry + exponential backoff."""
+    """GET with retry + exponential backoff. Handles 429 with a longer wait."""
     last_exc: Exception | None = None
     for attempt in range(retries):
         try:
             with httpx.Client(timeout=30.0) as client:
                 resp = client.get(url, params=params)
+                if resp.status_code == 429:
+                    wait = 60
+                    logger.warning("CoinGecko rate limited (429) — waiting %ds before retry", wait)
+                    time.sleep(wait)
+                    continue
                 resp.raise_for_status()
                 return resp.json()
         except Exception as exc:
