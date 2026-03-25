@@ -170,10 +170,9 @@ make lint-security   # bandit security scan
 
 See [ROADMAP.md](ROADMAP.md) for planned versions. Highlights:
 
-- **v0.2** — HMM-based volatility regime (3-state GaussianHMM replacing rule-based classifier)
-- **v0.3** — Market context: BTC dominance trend, Altcoin Rotation Score, Market Readiness Score
-- **v0.4** — Multi-timeframe (4H + weekly) + RSI divergence detection
-- **v0.5** — Persistent watchlist + Claude-triggered regime-change alerts
+- **v0.2** — HMM volatility regime + market context (BTC dominance, Altcoin Rotation Score, Market Readiness Score)
+- **v0.3** — Multi-timeframe (4H + weekly), RSI divergence, `top_coins` tool, 50+ coin batch ranking
+- **v0.4** — Persistent watchlist + Claude-triggered regime-change and TSS threshold alerts
 
 ---
 
