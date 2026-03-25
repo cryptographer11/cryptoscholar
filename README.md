@@ -11,7 +11,7 @@ Ask Claude *"Is SOL set up for a swing trade?"* and it fetches live data, runs a
 CryptoScholar exposes 3 MCP tools that Claude can call natively:
 
 ### `analyze_coin`
-Full technical analysis snapshot for any coin. Fetches 90 days of OHLCV from CoinGecko and computes:
+Full technical analysis snapshot for any coin. Fetches 250 days of OHLCV from CoinGecko and computes:
 
 | Indicator | Details |
 |-----------|---------|

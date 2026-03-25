@@ -86,7 +86,7 @@ Claude → MCP call
 ## Data Flow: analyze_coin("BTC")
 
 1. Map "BTC" → "bitcoin" via SYMBOL_TO_ID
-2. GET `/coins/bitcoin/market_chart?days=90&interval=daily` → price + volume history
+2. GET `/coins/bitcoin/market_chart?days=250&interval=daily` → price + volume history
 3. GET `/coins/markets?ids=bitcoin` → current price, market cap, 24h change
 4. Reconstruct daily OHLCV DataFrame (open≈prev_close, high/low approximated)
 5. Compute all indicators via pandas-ta + custom functions

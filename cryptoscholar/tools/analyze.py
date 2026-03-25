@@ -35,8 +35,8 @@ def analyze_coin(symbol: str, btc_df=None) -> dict:
     symbol = symbol.upper().strip()
     coin_id = resolve_symbol(symbol)
 
-    # Fetch price history
-    chart_data = fetch_market_chart(coin_id, days=90)
+    # Fetch price history — 250 days needed for EMA-200 to have enough data
+    chart_data = fetch_market_chart(coin_id, days=250)
     df = build_ohlcv_dataframe(chart_data)
 
     if len(df) < 30:
@@ -49,7 +49,7 @@ def analyze_coin(symbol: str, btc_df=None) -> dict:
             btc_close = btc_df["close"]
         else:
             try:
-                btc_chart = fetch_market_chart("bitcoin", days=90)
+                btc_chart = fetch_market_chart("bitcoin", days=250)
                 btc_ohlcv = build_ohlcv_dataframe(btc_chart)
                 btc_close = btc_ohlcv["close"]
             except Exception as exc:
