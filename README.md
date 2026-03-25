@@ -73,6 +73,32 @@ Restart Claude Code. You can now ask:
 
 ---
 
+## Screenshots
+
+<p align="center">
+  <a href="docs/rank_coins_xrp_bear.png">
+    <img src="docs/rank_coins_xrp_bear.png" width="800" style="max-width: 100%">
+  </a>
+  <br>
+  <em>Ranking BTC, ETH, and XRP by Trend Strength Score — then drilling into the bear case for XRP</em>
+</p>
+
+`rank_coins` scores each coin across trend, momentum, and relative strength vs BTC and returns them sorted by TSS. Here BTC leads at 63.7, ETH at 53.0, and XRP trails at 47.8 — all in `low_vol` regime. Asking for the XRP bear case immediately after surfaces the specific technical reasons: a steepest weekly EMA slope, faltering MACD, and ETH underperformance vs BTC flagged as early institutional exit pressure.
+
+---
+
+<p align="center">
+  <a href="docs/sol_analysis.png">
+    <img src="docs/sol_analysis.png" width="800" style="max-width: 100%">
+  </a>
+  <br>
+  <em>Full technical analysis snapshot for SOL — indicators, scoring, and bear case in one response</em>
+</p>
+
+`analyze_coin` returns a structured breakdown covering EMA stack alignment, RSI, MACD, ADX, ATR, Bollinger Band width, and relative strength vs BTC — all computed from 250 days of live market data. Claude then reads the raw indicator values to generate a grounded bear case: EMA-200 resistance, steepest weekly slope, and MACD crossdown risk. No chart-switching, no copy-pasting — the full TA context is already in Claude's window.
+
+---
+
 ## Example output
 
 **`analyze_coin("SOL")`**
