@@ -170,9 +170,10 @@ make lint-security   # bandit security scan
 
 See [ROADMAP.md](ROADMAP.md) for planned versions. Highlights:
 
-- **v0.2** — HMM volatility regime + market context (BTC dominance, Altcoin Rotation Score, Market Readiness Score)
+- **v0.2** — Binance API for real OHLCV + market context (BTC dominance, ARS, MRS, stablecoin supply)
 - **v0.3** — Multi-timeframe (4H + weekly), RSI divergence, `top_coins` tool, 50+ coin batch ranking
 - **v0.4** — Persistent watchlist + Claude-triggered regime-change and TSS threshold alerts
+- **v0.5** — HMM volatility regime (3-state GaussianHMM replacing rule-based classifier)
 
 ---
 
