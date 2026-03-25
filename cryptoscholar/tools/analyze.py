@@ -1,7 +1,6 @@
 """analyze_coin tool implementation."""
 
 import logging
-import time
 from typing import Optional
 
 from cryptoscholar.data.coingecko import (
@@ -34,7 +33,6 @@ def analyze_coin(symbol: str, btc_df=None) -> dict:
     Structured dict with all indicators, scores, regime, and market data.
     """
     symbol = symbol.upper().strip()
-    time.sleep(0.5)  # throttle to avoid 429 when multiple coins are analyzed in parallel
     coin_id = resolve_symbol(symbol)
 
     # Fetch price history

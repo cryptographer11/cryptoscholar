@@ -1,5 +1,6 @@
 """CoinGecko free API client with TTL cache and retry logic."""
 
+import threading
 import time
 import logging
 from typing import Optional
@@ -9,6 +10,22 @@ import httpx
 logger = logging.getLogger(__name__)
 
 BASE_URL = "https://api.coingecko.com/api/v3"
+
+# Global rate limiter: minimum 2s between any HTTP request to CoinGecko.
+# Free tier is ~10 req/min; 2s interval keeps us safely under that.
+_RATE_LOCK = threading.Lock()
+_LAST_REQUEST_TS: float = 0.0
+_MIN_INTERVAL = 2.0  # seconds
+
+
+def _rate_limit() -> None:
+    """Block until the minimum interval since the last request has elapsed."""
+    global _LAST_REQUEST_TS
+    with _RATE_LOCK:
+        elapsed = time.time() - _LAST_REQUEST_TS
+        if elapsed < _MIN_INTERVAL:
+            time.sleep(_MIN_INTERVAL - elapsed)
+        _LAST_REQUEST_TS = time.time()
 
 SYMBOL_TO_ID: dict[str, str] = {
     "BTC": "bitcoin",
@@ -53,9 +70,10 @@ def _cache_set(key: str, value: object) -> None:
 
 
 def _get(url: str, params: dict | None = None, retries: int = 3) -> dict:
-    """GET with retry + exponential backoff. Handles 429 with a longer wait."""
+    """GET with rate limiting, retry, and exponential backoff. Handles 429 with a longer wait."""
     last_exc: Exception | None = None
     for attempt in range(retries):
+        _rate_limit()
         try:
             with httpx.Client(timeout=30.0) as client:
                 resp = client.get(url, params=params)
