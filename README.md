@@ -47,6 +47,15 @@ No API key required for market data. Only `ANTHROPIC_API_KEY` is needed for the 
 
 ---
 
+## What's new in v0.2.0
+
+- **Real OHLCV candles** — price data now comes from Binance's public API (300 days, no API key required). CoinGecko is kept as automatic fallback for any symbol not on Binance. The `analyze_coin` output includes a `data_source` field so you can see which was used.
+- **`market_context` tool** — a new fourth tool that gives Claude a macro picture before diving into individual coins. Returns BTC dominance trend, ETH/BTC ratio, TOTAL3 altcoin market cap, and stablecoin supply from DefiLlama.
+- **ARS (Altcoin Rotation Score)** — 0–100 composite scoring whether the macro environment favours alts. Factors in BTC dominance direction, ETH/BTC trend, and TOTAL3 momentum.
+- **MRS (Market Readiness Score)** — 0–100 overall market readiness for upside. Weighted: 40% BTC trend + 30% ARS + 30% stablecoin supply trend.
+
+---
+
 ## Quick start
 
 **Requirements:** Python 3.11+
