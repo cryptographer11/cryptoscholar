@@ -185,7 +185,11 @@ Restart Claude Code. You can now ask:
 
 ## Supported coins
 
-CryptoScholar ships with a built-in symbol map for 20 major coins (BTC, ETH, SOL, BNB, XRP, ADA, AVAX, LINK, DOGE, DOT, MATIC, UNI, ATOM, LTC, BCH, NEAR, APT, ARB, OP, INJ) and falls back to a CoinGecko search for any other symbol. All 20 coins are also available on Binance USDT pairs for real OHLCV data.
+CryptoScholar works with any coin listed on CoinGecko or Binance — just pass the ticker symbol. No configuration needed.
+
+A built-in symbol map covers 20 major coins for instant resolution (BTC, ETH, SOL, BNB, XRP, ADA, AVAX, LINK, DOGE, DOT, MATIC, UNI, ATOM, LTC, BCH, NEAR, APT, ARB, OP, INJ). For anything outside that list, CryptoScholar automatically queries CoinGecko's search API to resolve the symbol and falls back to CoinGecko OHLCV if the coin isn't available on Binance.
+
+In practice: if it trades somewhere and has a CoinGecko listing, it will work.
 
 ---
 
