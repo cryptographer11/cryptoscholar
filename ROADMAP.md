@@ -1,17 +1,18 @@
 # CryptoScholar Roadmap
 
-## v0.1.0 (current)
+## v0.1.0 (released)
 - analyze_coin: full TA analysis via CoinGecko free API
 - rank_coins: TSS-based ranking for multiple coins
 - debate: Claude AI bull/bear synthesis
 - Rule-based regime detection (low/mid/high vol)
 
-## v0.2.0 — Better Data + Market Context
-- Switch OHLCV data source from CoinGecko to Binance public API (real candles, 1,200 req/min, no auth)
-- BTC dominance trend + velocity (CoinGecko /global, kept for macro context)
-- Altcoin Rotation Score (ARS) — BTC dominance trend, ETH/BTC ratio, TOTAL3 proxy
-- Market Readiness Score (MRS) — composite of trend signal, ARS, and VRS
-- Stablecoin supply proxy via DefiLlama
+## v0.2.0 (current)
+- Binance public API for real OHLCV candles (1,200 req/min, no auth required); CoinGecko retained as fallback
+- `market_context` tool: BTC dominance trend + velocity, ETH/BTC ratio trend, TOTAL3 market cap
+- ARS (Altcoin Rotation Score) — composite of BTC dominance direction, ETH/BTC trend, TOTAL3
+- MRS (Market Readiness Score) — 40% BTC trend + 30% ARS + 30% stablecoin supply trend
+- Stablecoin supply trend via DefiLlama public API
+- `data_source` field in analyze_coin output (`binance` or `coingecko`)
 
 ## v0.3.0 — Multi-Timeframe + Scale
 - 4H + weekly analysis alongside daily; MTF alignment bonus/penalty in TSS

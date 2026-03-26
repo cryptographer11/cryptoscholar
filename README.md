@@ -2,16 +2,16 @@
 
 > **Crypto technical analysis, directly inside Claude.** CryptoScholar is a Model Context Protocol (MCP) server that gives Claude real-time TA capabilities — no chart-switching, no copy-pasting data, no context loss.
 
-Ask Claude *"Is SOL set up for a swing trade?"* and it fetches live data, runs a full indicator suite, scores it, and delivers a grounded bull/bear debate — all in one response.
+Ask Claude *"Is SOL set up for a swing trade?"* and it fetches live data from Binance, runs a full indicator suite, scores it, and delivers a grounded bull/bear debate — all in one response.
 
 ---
 
 ## What it does
 
-CryptoScholar exposes 3 MCP tools that Claude can call natively:
+CryptoScholar exposes 4 MCP tools that Claude can call natively:
 
 ### `analyze_coin`
-Full technical analysis snapshot for any coin. Fetches 250 days of OHLCV from CoinGecko and computes:
+Full technical analysis snapshot for any coin. Fetches 300 days of real OHLCV candles from Binance (with CoinGecko fallback) and computes:
 
 | Indicator | Details |
 |-----------|---------|
@@ -24,6 +24,18 @@ Full technical analysis snapshot for any coin. Fetches 250 days of OHLCV from Co
 
 ### `rank_coins`
 Pass a list of symbols and get them back ranked by TSS. Useful for quickly identifying the strongest setups across your watchlist.
+
+### `market_context`
+Macro market signals to frame individual coin analysis. Uses CoinGecko global data and DefiLlama stablecoin supply. Returns:
+
+| Signal | Description |
+|--------|-------------|
+| **BTC dominance** | Current % and 30-day change — falling = capital rotating to alts |
+| **ETH/BTC ratio** | 20-day trend — rising = broadening rally |
+| **TOTAL3** | Altcoin market cap (ex-BTC, ex-ETH) 30-day change |
+| **Stablecoin supply** | Total stablecoin market cap and 30-day trend (rising = more buying powder) |
+| **ARS** | Altcoin Rotation Score 0–100 — how favourable macro is for alts |
+| **MRS** | Market Readiness Score 0–100 — overall market readiness for upside moves |
 
 ### `debate`
 Claude reads the live TA data and generates a structured bull/bear debate grounded in actual indicator values — not hallucinated opinion. Returns:
@@ -50,7 +62,7 @@ cryptoscholar
 
 ### Add to Claude Code
 
-In `~/.claude/settings.json`:
+In `~/.claude/.mcp.json`:
 
 ```json
 {
@@ -69,6 +81,7 @@ In `~/.claude/settings.json`:
 Restart Claude Code. You can now ask:
 - *"Analyze BTC for me"*
 - *"Rank ETH, SOL, AVAX, and LINK by trend strength"*
+- *"What does the macro market look like right now?"*
 - *"Give me the bull and bear case for DOGE based on current TA"*
 
 ---
@@ -95,30 +108,48 @@ Restart Claude Code. You can now ask:
   <em>Full technical analysis snapshot for SOL — indicators, scoring, and bear case in one response</em>
 </p>
 
-`analyze_coin` returns a structured breakdown covering EMA stack alignment, RSI, MACD, ADX, ATR, Bollinger Band width, and relative strength vs BTC — all computed from 250 days of live market data. Claude then reads the raw indicator values to generate a grounded bear case: EMA-200 resistance, steepest weekly slope, and MACD crossdown risk. No chart-switching, no copy-pasting — the full TA context is already in Claude's window.
+`analyze_coin` returns a structured breakdown covering EMA stack alignment, RSI, MACD, ADX, ATR, Bollinger Band width, and relative strength vs BTC — all computed from 300 days of live Binance candles. Claude then reads the raw indicator values to generate a grounded bear case: EMA-200 resistance, weekly slope steepening, and MACD crossdown risk. No chart-switching, no copy-pasting — the full TA context is already in Claude's window.
 
 ---
 
 ## Example output
 
+**`market_context()`**
+```json
+{
+  "btc_price_30d_change_pct": -8.4,
+  "btc_dominance_current": 54.2,
+  "btc_dominance_30d_change_pct": 2.1,
+  "eth_btc_20d_change_pct": -5.3,
+  "total3_30d_change_pct": -14.6,
+  "stablecoin_supply_usd": 196500000000,
+  "stablecoin_30d_change_pct": 2.8,
+  "btc_trend_score": 35.0,
+  "ars": 28.5,
+  "stablecoin_score": 60.0,
+  "mrs": 42.3
+}
+```
+
 **`analyze_coin("SOL")`**
 ```json
 {
   "symbol": "SOL",
+  "data_source": "binance",
   "price": 142.30,
   "tss": 74.2,
   "regime": "mid_vol",
   "vrs": 55,
-  "ema_alignment": "EMA20 > EMA50 > EMA200 (bullish stack)",
-  "rsi_14": 61.4,
-  "macd_signal": "bullish crossover",
-  "adx_14": 28.1,
-  "atr_14": 6.82,
-  "hv_20": 68.4,
-  "rs_btc": 4.2,
-  "bb_width": 0.18,
-  "market_cap": 65800000000,
-  "change_24h": 2.3
+  "ema_alignment": "full_bull",
+  "indicators": {
+    "rsi_14": 61.4,
+    "macd_hist": 0.42,
+    "adx_14": 28.1,
+    "atr_14": 6.82,
+    "hv_20": 68.4,
+    "rs_btc": 4.2,
+    "bb_width": 0.18
+  }
 }
 ```
 
@@ -145,7 +176,7 @@ Restart Claude Code. You can now ask:
 
 ## Supported coins
 
-CryptoScholar ships with a built-in symbol map for 20 major coins (BTC, ETH, SOL, BNB, XRP, ADA, AVAX, LINK, DOGE, DOT, MATIC, UNI, ATOM, LTC, BCH, NEAR, APT, ARB, OP, INJ) and falls back to a CoinGecko search for any other symbol.
+CryptoScholar ships with a built-in symbol map for 20 major coins (BTC, ETH, SOL, BNB, XRP, ADA, AVAX, LINK, DOGE, DOT, MATIC, UNI, ATOM, LTC, BCH, NEAR, APT, ARB, OP, INJ) and falls back to a CoinGecko search for any other symbol. All 20 coins are also available on Binance USDT pairs for real OHLCV data.
 
 ---
 
@@ -155,27 +186,39 @@ Stateless by design — no database, no scheduler. Every tool call fetches fresh
 
 ```
 Claude (MCP call)
-    └── server.py          FastMCP entry point
+    └── server.py              FastMCP entry point
          ├── tools/
-         │    ├── analyze.py    Orchestrates fetch → indicators → regime → score
-         │    ├── rank.py       Runs analyze_coin per symbol, sorts by TSS
-         │    └── debate.py     Builds prompt from TA data, calls Claude API
+         │    ├── analyze.py        Orchestrates fetch → indicators → regime → score
+         │    ├── rank.py           Runs analyze_coin per symbol, sorts by TSS
+         │    ├── debate.py         Builds prompt from TA data, calls Claude API
+         │    └── market_context.py ARS + MRS + macro signals
          ├── ta/
-         │    ├── indicators.py pandas-ta + custom HV / RS functions
-         │    ├── scoring.py    TSS: trend + momentum + relative strength
-         │    └── regime.py     Rule-based vol regime (ATR + BBW percentile)
+         │    ├── indicators.py     pandas-ta + custom HV / RS functions
+         │    ├── scoring.py        TSS: trend + momentum + relative strength
+         │    └── regime.py         Rule-based vol regime (ATR + BBW percentile)
+         ├── market/
+         │    └── context.py        BTC dominance, ETH/BTC, TOTAL3, ARS, MRS
          └── data/
-              └── coingecko.py  HTTP client, 5-min TTL cache, OHLCV builder
+              ├── binance.py        Binance klines client (1,200 req/min, no auth)
+              ├── coingecko.py      CoinGecko client, 5-min TTL cache, OHLCV builder
+              └── defillama.py      DefiLlama stablecoin supply history
 ```
 
-**Data flow for `analyze_coin("BTC")`:**
-1. Map symbol → CoinGecko ID (`BTC` → `bitcoin`)
-2. Fetch 90-day daily price/volume history + current market data
-3. Reconstruct OHLCV DataFrame
-4. Compute all indicators via pandas-ta and custom functions
-5. Classify regime (ATR + BB width percentile position vs 90-day range)
-6. Compute TSS (weighted composite of trend, momentum, RS)
+**Data flow for `analyze_coin("SOL")`:**
+1. Map symbol → CoinGecko ID (`SOL` → `solana`)
+2. Fetch 300-day OHLCV from Binance (`SOLUSDT` klines); fall back to CoinGecko if unavailable
+3. Compute all indicators via pandas-ta and custom functions
+4. Classify regime (ATR + BB width percentile position vs historical range)
+5. Compute TSS (weighted composite of trend, momentum, RS vs BTC)
+6. Fetch current market data (price, market cap, 24h change) from CoinGecko
 7. Return structured dict to Claude
+
+**Data flow for `market_context()`:**
+1. Fetch total market cap history (30d) from CoinGecko `/global/market_cap_chart`
+2. Fetch BTC and ETH market chart history (30d) from CoinGecko
+3. Fetch stablecoin supply history from DefiLlama
+4. Compute BTC dominance trend, ETH/BTC ratio trend, TOTAL3 change
+5. Score into ARS (altcoin rotation) and MRS (market readiness)
 
 ---
 
@@ -188,7 +231,7 @@ make coverage        # coverage report
 make lint-security   # bandit security scan
 ```
 
-**36 tests, 0 failures.**
+**71 tests, 0 failures.**
 
 ---
 
@@ -196,7 +239,6 @@ make lint-security   # bandit security scan
 
 See [ROADMAP.md](ROADMAP.md) for planned versions. Highlights:
 
-- **v0.2** — Binance API for real OHLCV + market context (BTC dominance, ARS, MRS, stablecoin supply)
 - **v0.3** — Multi-timeframe (4H + weekly), RSI divergence, `top_coins` tool, 50+ coin batch ranking
 - **v0.4** — Persistent watchlist + Claude-triggered regime-change and TSS threshold alerts
 - **v0.5** — HMM volatility regime (3-state GaussianHMM replacing rule-based classifier)

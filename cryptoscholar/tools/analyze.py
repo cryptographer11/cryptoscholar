@@ -16,6 +16,30 @@ from cryptoscholar.ta.scoring import compute_tss
 logger = logging.getLogger(__name__)
 
 
+def _fetch_ohlcv_with_fallback(symbol: str, days: int = 300) -> tuple["pd.DataFrame", str]:  # type: ignore[name-defined]
+    """
+    Try Binance first for real OHLCV candles; fall back to CoinGecko approximation.
+
+    Returns (DataFrame, data_source) where data_source is 'binance' or 'coingecko'.
+    """
+    import pandas as pd  # noqa: F401
+
+    try:
+        from cryptoscholar.data.binance import fetch_ohlcv as fetch_binance
+        df = fetch_binance(symbol, days=days)
+        logger.debug("OHLCV source: Binance (%d candles for %s)", len(df), symbol)
+        return df, "binance"
+    except Exception as exc:
+        logger.info("Binance unavailable for %s (%s) — falling back to CoinGecko", symbol, exc)
+
+    # CoinGecko fallback: needs 250 days for EMA-200
+    coin_id = resolve_symbol(symbol)
+    chart_data = fetch_market_chart(coin_id, days=250)
+    df = build_ohlcv_dataframe(chart_data)
+    logger.debug("OHLCV source: CoinGecko (%d candles for %s)", len(df), symbol)
+    return df, "coingecko"
+
+
 def analyze_coin(symbol: str, btc_df=None) -> dict:
     """
     Perform full technical analysis on a cryptocurrency.
@@ -31,13 +55,13 @@ def analyze_coin(symbol: str, btc_df=None) -> dict:
     Returns
     -------
     Structured dict with all indicators, scores, regime, and market data.
+    Includes 'data_source' field: 'binance' or 'coingecko'.
     """
     symbol = symbol.upper().strip()
     coin_id = resolve_symbol(symbol)
 
-    # Fetch price history — 250 days needed for EMA-200 to have enough data
-    chart_data = fetch_market_chart(coin_id, days=250)
-    df = build_ohlcv_dataframe(chart_data)
+    # Fetch OHLCV — Binance (real candles) first, CoinGecko fallback
+    df, data_source = _fetch_ohlcv_with_fallback(symbol, days=300)
 
     if len(df) < 30:
         raise ValueError(f"Insufficient price history for {symbol} (got {len(df)} days, need 30)")
@@ -49,9 +73,8 @@ def analyze_coin(symbol: str, btc_df=None) -> dict:
             btc_close = btc_df["close"]
         else:
             try:
-                btc_chart = fetch_market_chart("bitcoin", days=250)
-                btc_ohlcv = build_ohlcv_dataframe(btc_chart)
-                btc_close = btc_ohlcv["close"]
+                btc_df_fetched, _ = _fetch_ohlcv_with_fallback("BTC", days=300)
+                btc_close = btc_df_fetched["close"]
             except Exception as exc:
                 logger.warning("Could not fetch BTC data for RS calculation: %s", exc)
 
@@ -89,6 +112,7 @@ def analyze_coin(symbol: str, btc_df=None) -> dict:
     return {
         "symbol": symbol,
         "coin_id": coin_id,
+        "data_source": data_source,
         "price": price,
         "market_cap": market_cap,
         "price_change_24h_pct": price_change_24h,

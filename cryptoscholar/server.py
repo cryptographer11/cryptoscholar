@@ -28,6 +28,7 @@ from mcp.server.fastmcp import FastMCP
 
 from cryptoscholar.tools.analyze import analyze_coin as _analyze_coin
 from cryptoscholar.tools.debate import debate as _debate
+from cryptoscholar.tools.market_context import market_context as _market_context
 from cryptoscholar.tools.rank import rank_coins as _rank_coins
 
 mcp = FastMCP("CryptoScholar")
@@ -37,9 +38,10 @@ mcp = FastMCP("CryptoScholar")
 def analyze_coin(symbol: str) -> dict:
     """Perform full technical analysis on a cryptocurrency.
 
-    Fetches 90 days of daily OHLCV from CoinGecko, computes EMA, RSI,
-    MACD, ADX, ATR, Bollinger Bands, historical volatility, and relative
-    strength vs BTC. Returns indicators, TSS score, and regime label.
+    Fetches 300 days of daily OHLCV from Binance (or CoinGecko as fallback),
+    computes EMA, RSI, MACD, ADX, ATR, Bollinger Bands, historical volatility,
+    and relative strength vs BTC. Returns indicators, TSS score, regime label,
+    and the data source used.
     """
     return _analyze_coin(symbol)
 
@@ -48,8 +50,9 @@ def analyze_coin(symbol: str) -> dict:
 def rank_coins(symbols: list[str]) -> list[dict]:
     """Rank multiple cryptocurrencies by Trend Strength Score (TSS).
 
-    Analyzes each symbol and returns a ranked list with TSS, regime,
-    key signals, and price data. Failed symbols are skipped gracefully.
+    Analyzes each symbol using Binance OHLCV (CoinGecko fallback) and returns
+    a ranked list with TSS, regime, key signals, and price data.
+    Failed symbols are skipped gracefully.
     """
     return _rank_coins(symbols)
 
@@ -65,9 +68,24 @@ def debate(symbol: str) -> dict:
     return _debate(symbol)
 
 
+@mcp.tool()
+def market_context() -> dict:
+    """Fetch macro market context signals for the overall crypto market.
+
+    Returns BTC dominance trend, ETH/BTC ratio trend, TOTAL3 market cap trend,
+    stablecoin supply trend, and composite scores:
+      - ARS (Altcoin Rotation Score): how favourable macro is for alts (0-100)
+      - MRS (Market Readiness Score): overall market readiness for upside (0-100)
+
+    No API key required. Data from CoinGecko (rate-limited) and DefiLlama.
+    Results are cached for 5 minutes.
+    """
+    return _market_context()
+
+
 def main() -> None:
     """Run the MCP server."""
-    logger.info("Starting CryptoScholar MCP server")
+    logger.info("Starting CryptoScholar MCP server v0.2.0")
     mcp.run()
 
 

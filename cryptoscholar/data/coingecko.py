@@ -175,6 +175,27 @@ def fetch_global() -> dict:
     return result
 
 
+def fetch_global_market_chart(days: int = 30) -> dict:
+    """
+    Fetch historical total crypto market cap from CoinGecko.
+
+    Returns dict with keys:
+      market_cap : [[timestamp_ms, total_mcap_usd], ...]
+      volume     : [[timestamp_ms, total_vol_usd], ...]
+    """
+    cache_key = f"global_market_chart:{days}"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached  # type: ignore[return-value]
+
+    data = _get(
+        f"{BASE_URL}/global/market_cap_chart",
+        params={"days": days, "vs_currency": "usd"},
+    )
+    _cache_set(cache_key, data)
+    return data
+
+
 def build_ohlcv_dataframe(chart_data: dict) -> "pandas.DataFrame":  # type: ignore[name-defined]
     """
     Build a daily OHLCV DataFrame from CoinGecko market_chart response.
