@@ -255,6 +255,8 @@ See [ROADMAP.md](ROADMAP.md) for planned versions. Highlights:
 - **v0.3** — Multi-timeframe (4H + weekly), RSI divergence, `top_coins` tool, 50+ coin batch ranking
 - **v0.4** — Persistent watchlist + Claude-triggered regime-change and TSS threshold alerts
 - **v0.5** — HMM volatility regime (3-state GaussianHMM replacing rule-based classifier)
+- **v0.6** — `generate_report` tool: cluster → write → assemble pipeline for formatted markdown reports
+- **v0.7** — `research_coin` tool: web search + Jina reader for news and narrative context
 
 ---
 
