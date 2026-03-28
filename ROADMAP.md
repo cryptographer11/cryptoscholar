@@ -30,3 +30,18 @@
 - Auto-retrain every 7 days on accumulated price history
 - Persist trained model to ~/.cryptoscholar/hmm_model.pkl
 - `train_regime_model` tool for manual retrain
+
+## v0.6.0 — Analysis Report Generation
+- `generate_report` tool: 3-stage Cluster → Write → Assemble pipeline
+- Stage 1: cluster related signals/indicators into thematic groups per coin
+- Stage 2: write structured sections (trend, momentum, on-chain context, risks)
+- Stage 3: assemble into a formatted markdown report with key stats table
+- Support for multi-coin comparison reports (e.g. "compare BTC, ETH, SOL")
+- Optional: output as JSON for downstream consumption
+
+## v0.7.0 — Research & News Context
+- `research_coin` tool: web search (DuckDuckGo + Jina reader) for news and narratives
+- Jina AI reader (`r.jina.ai`) converts URLs to clean markdown for LLM ingestion
+- Smart search cache: skip redundant searches when recent results are still relevant
+- Integrate research context into `analyze_coin` and `debate` outputs
+- Local result store (SQLite) for deduplication and re-use within session
