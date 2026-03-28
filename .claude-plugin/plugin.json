@@ -1,0 +1,13 @@
+{
+  "name": "cryptoscholar",
+  "version": "0.2.0",
+  "description": "Crypto technical analysis MCP server powered by Binance real-time data",
+  "mcpServers": {
+    "cryptoscholar": {
+      "command": "cryptoscholar",
+      "env": {
+        "ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY}"
+      }
+    }
+  }
+}

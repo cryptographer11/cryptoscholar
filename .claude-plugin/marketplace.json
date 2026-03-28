@@ -1,0 +1,57 @@
+{
+  "name": "cryptoscholar",
+  "displayName": "CryptoScholar",
+  "description": "Crypto technical analysis inside Claude. Ask about any coin — get live TA, TSS scoring, macro context, and a grounded bull/bear debate. Data from Binance (no API key required for TA tools).",
+  "version": "0.2.0",
+  "author": "cryptographer11",
+  "license": "MIT",
+  "repository": "https://github.com/cryptographer11/cryptoscholar",
+  "icon": "https://raw.githubusercontent.com/cryptographer11/cryptoscholar/main/docs/logo_400x400.png",
+  "categories": ["finance", "data", "research"],
+  "tags": ["crypto", "trading", "technical-analysis", "bitcoin", "defi", "binance"],
+  "mcpServers": {
+    "cryptoscholar": {
+      "type": "stdio",
+      "command": "cryptoscholar",
+      "install": {
+        "type": "pip",
+        "package": "cryptoscholar"
+      },
+      "env": {
+        "ANTHROPIC_API_KEY": {
+          "description": "Anthropic API key — required only for the 'debate' tool. The other 3 tools (analyze_coin, rank_coins, market_context) work without it.",
+          "required": false
+        }
+      }
+    }
+  },
+  "tools": [
+    {
+      "name": "analyze_coin",
+      "description": "Full technical analysis for any coin: EMA-20/50/200, RSI-14, MACD, ADX, ATR, Bollinger Bands, Historical Volatility, and TSS composite score (0–100). Data from Binance (CoinGecko fallback)."
+    },
+    {
+      "name": "rank_coins",
+      "description": "Rank a watchlist of symbols by Trend Strength Score (TSS). Returns a sorted table with full TA data for each coin."
+    },
+    {
+      "name": "market_context",
+      "description": "Macro market signals: BTC dominance trend, ETH/BTC ratio, TOTAL3 altcoin market cap, stablecoin supply (DefiLlama), ARS (Altcoin Rotation Score 0–100), and MRS (Market Readiness Score 0–100)."
+    },
+    {
+      "name": "debate",
+      "description": "Live bull/bear debate grounded in actual indicator values — not hallucinated opinion. Returns bull case, bear case, and a one-sentence bottom line. Requires ANTHROPIC_API_KEY."
+    }
+  ],
+  "quickStart": "pip install cryptoscholar",
+  "configExample": {
+    "mcpServers": {
+      "cryptoscholar": {
+        "command": "cryptoscholar",
+        "env": {
+          "ANTHROPIC_API_KEY": "your-key-here"
+        }
+      }
+    }
+  }
+}
