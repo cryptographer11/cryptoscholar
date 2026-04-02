@@ -96,6 +96,7 @@ In `~/.claude/.mcp.json`:
 Restart Claude Code. You can now ask:
 - *"Analyze BTC for me"*
 - *"Rank ETH, SOL, AVAX, and LINK by trend strength"*
+- *"Show me the top 50 coins ranked by trend strength"*
 - *"What does the macro market look like right now?"*
 - *"Give me the bull and bear case for DOGE based on current TA"*
 
@@ -152,10 +153,12 @@ Restart Claude Code. You can now ask:
   "symbol": "SOL",
   "data_source": "binance",
   "price": 142.30,
-  "tss": 74.2,
+  "tss": 77.2,
   "regime": "mid_vol",
   "vrs": 55,
   "ema_alignment": "full_bull",
+  "mtf_alignment_4h": "bullish",
+  "rsi_divergence": "none",
   "indicators": {
     "rsi_14": 61.4,
     "macd_hist": 0.42,
@@ -163,7 +166,8 @@ Restart Claude Code. You can now ask:
     "atr_14": 6.82,
     "hv_20": 68.4,
     "rs_btc": 4.2,
-    "bb_width": 0.18
+    "bb_width": 0.18,
+    "rsi_divergence": "none"
   }
 }
 ```
@@ -193,7 +197,7 @@ Restart Claude Code. You can now ask:
 
 CryptoScholar works with any coin listed on CoinGecko or Binance — just pass the ticker symbol. No configuration needed.
 
-A built-in symbol map covers 20 major coins for instant resolution (BTC, ETH, SOL, BNB, XRP, ADA, AVAX, LINK, DOGE, DOT, MATIC, UNI, ATOM, LTC, BCH, NEAR, APT, ARB, OP, INJ). For anything outside that list, CryptoScholar automatically queries CoinGecko's search API to resolve the symbol and falls back to CoinGecko OHLCV if the coin isn't available on Binance.
+A built-in symbol map covers 65 major coins for instant resolution — the full top-50 market cap universe including BTC, ETH, SOL, BNB, XRP, ADA, AVAX, DOGE, LINK, DOT, SUI, TIA, WIF, BONK, and more. For anything outside that list, CryptoScholar automatically queries CoinGecko's search API to resolve the symbol and falls back to CoinGecko OHLCV if the coin isn't available on Binance.
 
 In practice: if it trades somewhere and has a CoinGecko listing, it will work.
 
@@ -208,7 +212,8 @@ Claude (MCP call)
     └── server.py              FastMCP entry point
          ├── tools/
          │    ├── analyze.py        Orchestrates fetch → indicators → regime → score
-         │    ├── rank.py           Runs analyze_coin per symbol, sorts by TSS
+         │    ├── rank.py           Runs analyze_coin in parallel, sorts by TSS
+         │    ├── top_coins.py      Fetches top N by market cap, delegates to rank_coins
          │    ├── debate.py         Builds prompt from TA data, calls Claude API
          │    └── market_context.py ARS + MRS + macro signals
          ├── ta/
@@ -225,12 +230,15 @@ Claude (MCP call)
 
 **Data flow for `analyze_coin("SOL")`:**
 1. Map symbol → CoinGecko ID (`SOL` → `solana`)
-2. Fetch 300-day OHLCV from Binance (`SOLUSDT` klines); fall back to CoinGecko if unavailable
-3. Compute all indicators via pandas-ta and custom functions
-4. Classify regime (ATR + BB width percentile position vs historical range)
-5. Compute TSS (weighted composite of trend, momentum, RS vs BTC)
-6. Fetch current market data (price, market cap, 24h change) from CoinGecko
-7. Return structured dict to Claude
+2. Fetch 300-day daily OHLCV from Binance (`SOLUSDT` klines); fall back to CoinGecko if unavailable
+3. Fetch 200-bar 4H OHLCV from Binance for multi-timeframe analysis
+4. Compute all daily indicators via pandas-ta (EMA, RSI, MACD, ADX, ATR, BB, HV, RS vs BTC)
+5. Compute 4H indicators (EMA-20/50) and derive MTF alignment bonus (±3 TSS pts)
+6. Detect RSI divergence over last 30 bars (bullish/bearish/none)
+7. Classify regime (ATR + BB width percentile position vs historical range)
+8. Compute TSS (weighted composite of trend, momentum, RS vs BTC + MTF bonus)
+9. Fetch current market data (price, market cap, 24h change) from CoinGecko
+10. Return structured dict to Claude
 
 **Data flow for `market_context()`:**
 1. Fetch total market cap history (30d) from CoinGecko `/global/market_cap_chart`
@@ -250,7 +258,7 @@ make coverage        # coverage report
 make lint-security   # bandit security scan
 ```
 
-**71 tests, 0 failures.**
+**101 tests, 0 failures.**
 
 ---
 
