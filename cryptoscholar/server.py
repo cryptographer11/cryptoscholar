@@ -30,6 +30,7 @@ from cryptoscholar.tools.analyze import analyze_coin as _analyze_coin
 from cryptoscholar.tools.debate import debate as _debate
 from cryptoscholar.tools.market_context import market_context as _market_context
 from cryptoscholar.tools.rank import rank_coins as _rank_coins
+from cryptoscholar.tools.top_coins import top_coins as _top_coins
 
 mcp = FastMCP("CryptoScholar")
 
@@ -40,8 +41,12 @@ def analyze_coin(symbol: str) -> dict:
 
     Fetches 300 days of daily OHLCV from Binance (or CoinGecko as fallback),
     computes EMA, RSI, MACD, ADX, ATR, Bollinger Bands, historical volatility,
-    and relative strength vs BTC. Returns indicators, TSS score, regime label,
-    and the data source used.
+    and relative strength vs BTC. Also fetches 4H candles for multi-timeframe
+    alignment and detects RSI divergence.
+
+    Returns indicators, TSS score (with ±3 MTF bonus), regime label,
+    mtf_alignment_4h (bullish/bearish/neutral/unavailable),
+    rsi_divergence (bullish/bearish/none), and the data source used.
     """
     return _analyze_coin(symbol)
 
@@ -51,7 +56,11 @@ def rank_coins(symbols: list[str]) -> list[dict]:
     """Rank multiple cryptocurrencies by Trend Strength Score (TSS).
 
     Analyzes each symbol using Binance OHLCV (CoinGecko fallback) and returns
-    a ranked list with TSS, regime, key signals, and price data.
+    a ranked list with TSS, regime, key signals, and price data. Analysis runs
+    in parallel (up to 8 workers) for fast results on large lists.
+
+    Each result includes: tss, regime, ema_alignment, mtf_alignment_4h,
+    rsi_divergence, rsi_14, adx_14, rs_btc, price, price_change_24h_pct.
     Failed symbols are skipped gracefully.
     """
     return _rank_coins(symbols)
@@ -83,9 +92,20 @@ def market_context() -> dict:
     return _market_context()
 
 
+@mcp.tool()
+def top_coins(limit: int = 50) -> list[dict]:
+    """Fetch the top N cryptocurrencies by market cap and rank them by TSS.
+
+    Stablecoins are excluded automatically. Uses parallel analysis (up to 8
+    workers) for fast results across 50+ coins. Returns the same fields as
+    rank_coins, plus mtf_alignment_4h and rsi_divergence for each coin.
+    """
+    return _top_coins(limit)
+
+
 def main() -> None:
     """Run the MCP server."""
-    logger.info("Starting CryptoScholar MCP server v0.2.0")
+    logger.info("Starting CryptoScholar MCP server v0.3.0")
     mcp.run()
 
 

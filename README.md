@@ -47,6 +47,16 @@ No API key required for market data. Only `ANTHROPIC_API_KEY` is needed for the 
 
 ---
 
+## What's new in v0.3.0
+
+- **Multi-timeframe analysis** — fetches 4H candles alongside daily. If 4H EMA-20 > EMA-50, TSS gets a +3 bonus; bearish 4H alignment subtracts 3. Gives a finer-grained entry signal.
+- **RSI divergence detection** — `analyze_coin` and `rank_coins` now return a `rsi_divergence` field: `bullish`, `bearish`, or `none`. Bullish divergence (price lower low + RSI higher low) can signal a trend reversal before it appears in EMAs.
+- **`top_coins` tool** — new fifth tool. Fetches the top 50 coins by market cap from CoinGecko, filters out stablecoins automatically, and returns them ranked by TSS. No symbol list needed.
+- **Batch ranking optimisation** — `rank_coins` now analyses coins in parallel (up to 8 workers via `ThreadPoolExecutor`). A 50-coin ranking that previously ran sequentially now completes in a fraction of the time.
+- **Expanded symbol map** — `SYMBOL_TO_ID` grows from 20 → 65 entries, covering the full top-50 market cap universe. Fewer fallback API search calls when using `top_coins`.
+
+---
+
 ## What's new in v0.2.0
 
 - **Real OHLCV candles** — price data now comes from Binance's public API (300 days, no API key required). CoinGecko is kept as automatic fallback for any symbol not on Binance. The `analyze_coin` output includes a `data_source` field so you can see which was used.
@@ -252,7 +262,7 @@ make lint-security   # bandit security scan
 
 See [ROADMAP.md](ROADMAP.md) for planned versions. Highlights:
 
-- **v0.3** — Multi-timeframe (4H + weekly), RSI divergence, `top_coins` tool, 50+ coin batch ranking
+- **v0.3** ✅ — Multi-timeframe (4H), RSI divergence, `top_coins` tool, parallel batch ranking
 - **v0.4** — Persistent watchlist + Claude-triggered regime-change and TSS threshold alerts
 - **v0.5** — HMM volatility regime (3-state GaussianHMM replacing rule-based classifier)
 - **v0.6** — `generate_report` tool: cluster → write → assemble pipeline for formatted markdown reports

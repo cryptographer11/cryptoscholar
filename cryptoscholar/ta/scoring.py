@@ -6,6 +6,25 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 
+def compute_4h_alignment_bonus(ind_4h: dict) -> float:
+    """
+    Return MTF alignment bonus based on 4H EMA-20 vs EMA-50.
+
+    +3 if 4H EMA-20 > EMA-50 (bullish alignment)
+    -3 if 4H EMA-20 < EMA-50 (bearish alignment)
+     0 if data unavailable
+    """
+    ema20 = ind_4h.get("ema_20_4h")
+    ema50 = ind_4h.get("ema_50_4h")
+    if ema20 is None or ema50 is None:
+        return 0.0
+    if ema20 > ema50:
+        return 3.0
+    if ema20 < ema50:
+        return -3.0
+    return 0.0
+
+
 def score_trend_component(ind: dict) -> float:
     """EMA alignment score 0-100."""
     score = 0.0
@@ -63,15 +82,18 @@ def score_momentum_component(ind: dict) -> float:
     return min(max(score, 0.0), 100.0)
 
 
-def compute_tss(ind: dict) -> float:
+def compute_tss(ind: dict, ind_4h: Optional[dict] = None) -> float:
     """
     Trend Strength Score: 40% trend + 30% momentum + 30% RS.
 
     RS vs BTC is normalised to 0-100 scale.
+    Optional ind_4h applies a ±3 MTF alignment bonus from 4H EMA alignment.
     """
     trend = score_trend_component(ind)
     momentum = score_momentum_component(ind)
     rs: Optional[float] = ind.get("rs_btc")
     rs_raw = rs if rs is not None else 0.0
     rs_score = min(max(50.0 + rs_raw * 2, 0.0), 100.0)
-    return round(0.4 * trend + 0.3 * momentum + 0.3 * rs_score, 1)
+    base = 0.4 * trend + 0.3 * momentum + 0.3 * rs_score
+    mtf_bonus = compute_4h_alignment_bonus(ind_4h) if ind_4h is not None else 0.0
+    return round(min(max(base + mtf_bonus, 0.0), 100.0), 1)

@@ -9,9 +9,9 @@ from cryptoscholar.data.coingecko import (
     fetch_market_data,
     resolve_symbol,
 )
-from cryptoscholar.ta.indicators import compute_indicators
+from cryptoscholar.ta.indicators import compute_4h_indicators, compute_indicators
 from cryptoscholar.ta.regime import classify_regime, compute_vrs
-from cryptoscholar.ta.scoring import compute_tss
+from cryptoscholar.ta.scoring import compute_4h_alignment_bonus, compute_tss
 
 logger = logging.getLogger(__name__)
 
@@ -78,15 +78,25 @@ def analyze_coin(symbol: str, btc_df=None) -> dict:
             except Exception as exc:
                 logger.warning("Could not fetch BTC data for RS calculation: %s", exc)
 
-    # Compute indicators
+    # Compute indicators (includes rsi_divergence)
     indicators = compute_indicators(df, btc_close=btc_close)
+
+    # Fetch 4H data for MTF alignment (Binance only — no CoinGecko fallback for 4H)
+    ind_4h: Optional[dict] = None
+    try:
+        from cryptoscholar.data.binance import fetch_ohlcv_4h
+        df_4h = fetch_ohlcv_4h(symbol, bars=200)
+        ind_4h = compute_4h_indicators(df_4h)
+        logger.debug("4H MTF indicators fetched for %s", symbol)
+    except Exception as exc:
+        logger.info("Could not fetch 4H data for %s (%s) — MTF bonus skipped", symbol, exc)
 
     # Regime
     regime = classify_regime(indicators)
     vrs = compute_vrs(regime)
 
-    # TSS
-    tss = compute_tss(indicators)
+    # TSS with optional MTF bonus
+    tss = compute_tss(indicators, ind_4h=ind_4h)
 
     # Current market data
     try:
@@ -109,6 +119,13 @@ def analyze_coin(symbol: str, btc_df=None) -> dict:
     # Strip internal series keys from output
     public_indicators = {k: v for k, v in indicators.items() if not k.startswith("_")}
 
+    mtf_alignment_4h = (
+        "bullish" if ind_4h and compute_4h_alignment_bonus(ind_4h) > 0
+        else "bearish" if ind_4h and compute_4h_alignment_bonus(ind_4h) < 0
+        else "neutral" if ind_4h
+        else "unavailable"
+    )
+
     return {
         "symbol": symbol,
         "coin_id": coin_id,
@@ -120,6 +137,8 @@ def analyze_coin(symbol: str, btc_df=None) -> dict:
         "regime": regime,
         "vrs": vrs,
         "ema_alignment": ema_alignment,
+        "mtf_alignment_4h": mtf_alignment_4h,
+        "rsi_divergence": indicators.get("rsi_divergence", "none"),
         "indicators": public_indicators,
     }
 

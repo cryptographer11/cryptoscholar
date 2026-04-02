@@ -37,6 +37,89 @@ def _resample_weekly(df: pd.DataFrame) -> pd.DataFrame:
     return weekly
 
 
+def compute_4h_indicators(df_4h: pd.DataFrame) -> dict:
+    """
+    Compute minimal indicators from 4H OHLCV for multi-timeframe alignment.
+
+    Parameters
+    ----------
+    df_4h : 4H OHLCV DataFrame with DatetimeIndex.
+
+    Returns
+    -------
+    Dict with ema_20_4h, ema_50_4h, rsi_14_4h.
+    """
+    try:
+        import pandas_ta as ta
+    except ImportError as exc:
+        raise ImportError("pandas_ta is required: pip install pandas-ta") from exc
+
+    result: dict = {}
+    close = df_4h["close"]
+
+    def _last(series: pd.Series) -> Optional[float]:
+        if series is None or series.empty:
+            return None
+        val = series.iloc[-1]
+        return float(val) if pd.notna(val) else None
+
+    result["ema_20_4h"] = _last(ta.ema(close, length=20))
+    result["ema_50_4h"] = _last(ta.ema(close, length=50))
+    result["rsi_14_4h"] = _last(ta.rsi(close, length=14))
+    return result
+
+
+def detect_rsi_divergence(df: pd.DataFrame, window: int = 30) -> str:
+    """
+    Detect RSI divergence over the last `window` bars.
+
+    Splits the window into two halves and compares price extremes vs RSI extremes:
+    - Bullish: price lower low + RSI higher low  → trend may be bottoming
+    - Bearish: price higher high + RSI lower high → trend may be topping
+
+    Parameters
+    ----------
+    df     : Daily OHLCV DataFrame with DatetimeIndex.
+    window : Number of bars to examine (default 30).
+
+    Returns
+    -------
+    One of: 'bullish', 'bearish', 'none'
+    """
+    try:
+        import pandas_ta as ta
+    except ImportError as exc:
+        raise ImportError("pandas_ta is required: pip install pandas-ta") from exc
+
+    if len(df) < window + 14:
+        return "none"
+
+    close = df["close"].iloc[-(window + 14):]
+    rsi = ta.rsi(close, length=14)
+    if rsi is None or rsi.dropna().empty:
+        return "none"
+
+    price_window = df["close"].iloc[-window:]
+    rsi_window = rsi.iloc[-window:]
+
+    if len(price_window) < window or rsi_window.isna().any():
+        return "none"
+
+    half = window // 2
+    price_first = price_window.iloc[:half]
+    price_second = price_window.iloc[half:]
+    rsi_first = rsi_window.iloc[:half]
+    rsi_second = rsi_window.iloc[half:]
+
+    # Bullish divergence: price lower low but RSI higher low
+    if price_second.min() < price_first.min() and rsi_second.min() > rsi_first.min():
+        return "bullish"
+    # Bearish divergence: price higher high but RSI lower high
+    if price_second.max() > price_first.max() and rsi_second.max() < rsi_first.max():
+        return "bearish"
+    return "none"
+
+
 def compute_indicators(
     df: pd.DataFrame,
     btc_close: Optional[pd.Series] = None,
@@ -172,5 +255,8 @@ def compute_indicators(
 
     # --- Current price ---
     result["price"] = _last(close)
+
+    # --- RSI divergence ---
+    result["rsi_divergence"] = detect_rsi_divergence(df)
 
     return result

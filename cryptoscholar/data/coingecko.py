@@ -28,26 +28,75 @@ def _rate_limit() -> None:
         _LAST_REQUEST_TS = time.time()
 
 SYMBOL_TO_ID: dict[str, str] = {
-    "BTC": "bitcoin",
-    "ETH": "ethereum",
-    "SOL": "solana",
-    "BNB": "binancecoin",
-    "XRP": "ripple",
-    "ADA": "cardano",
-    "AVAX": "avalanche-2",
-    "LINK": "chainlink",
-    "DOGE": "dogecoin",
-    "DOT": "polkadot",
+    # Tier 1 — top 10 by market cap
+    "BTC":   "bitcoin",
+    "ETH":   "ethereum",
+    "BNB":   "binancecoin",
+    "SOL":   "solana",
+    "XRP":   "ripple",
+    "USDC":  "usd-coin",
+    "ADA":   "cardano",
+    "AVAX":  "avalanche-2",
+    "DOGE":  "dogecoin",
+    "TRX":   "tron",
+    # Tier 2 — 11–30
+    "LINK":  "chainlink",
+    "DOT":   "polkadot",
     "MATIC": "matic-network",
-    "UNI": "uniswap",
-    "ATOM": "cosmos",
-    "LTC": "litecoin",
-    "BCH": "bitcoin-cash",
-    "NEAR": "near",
-    "APT": "aptos",
-    "ARB": "arbitrum",
-    "OP": "optimism",
-    "INJ": "injective-protocol",
+    "SHIB":  "shiba-inu",
+    "LTC":   "litecoin",
+    "BCH":   "bitcoin-cash",
+    "UNI":   "uniswap",
+    "ATOM":  "cosmos",
+    "NEAR":  "near",
+    "XLM":   "stellar",
+    "ETC":   "ethereum-classic",
+    "APT":   "aptos",
+    "ARB":   "arbitrum",
+    "OP":    "optimism",
+    "INJ":   "injective-protocol",
+    "ICP":   "internet-computer",
+    "FIL":   "filecoin",
+    "HBAR":  "hedera-hashgraph",
+    "VET":   "vechain",
+    "MKR":   "maker",
+    # Tier 3 — 31–65
+    "AAVE":  "aave",
+    "GRT":   "the-graph",
+    "ALGO":  "algorand",
+    "EGLD":  "elrond-erd-2",
+    "SAND":  "the-sandbox",
+    "MANA":  "decentraland",
+    "AXS":   "axie-infinity",
+    "THETA": "theta-token",
+    "XTZ":   "tezos",
+    "EOS":   "eos",
+    "CAKE":  "pancakeswap-token",
+    "KAVA":  "kava",
+    "ZEC":   "zcash",
+    "XMR":   "monero",
+    "RUNE":  "thorchain",
+    "LDO":   "lido-dao",
+    "CRV":   "curve-dao-token",
+    "SNX":   "synthetix-network-token",
+    "COMP":  "compound-governance-token",
+    "1INCH": "1inch",
+    "ENS":   "ethereum-name-service",
+    "IMX":   "immutable-x",
+    "BLUR":  "blur",
+    "PENDLE":"pendle",
+    "JTO":   "jito-governance-token",
+    "PYTH":  "pyth-network",
+    "W":     "wormhole",
+    "STX":   "blockstack",
+    "CFX":   "conflux-token",
+    "FTM":   "fantom",
+    "ONDO":  "ondo-finance",
+    "SEI":   "sei-network",
+    "SUI":   "sui",
+    "TIA":   "celestia",
+    "WIF":   "dogwifcoin",
+    "BONK":  "bonk",
 }
 
 _CACHE: dict[str, tuple[float, object]] = {}
@@ -194,6 +243,55 @@ def fetch_global_market_chart(days: int = 30) -> dict:
     )
     _cache_set(cache_key, data)
     return data
+
+
+_STABLECOINS: frozenset[str] = frozenset({
+    "USDT", "USDC", "BUSD", "DAI", "TUSD", "USDP", "USDD", "FRAX", "LUSD",
+    "FDUSD", "PYUSD", "USDE", "USDS",
+})
+
+
+def fetch_top_coins_by_market_cap(limit: int = 50) -> list[str]:
+    """
+    Fetch top N cryptocurrency symbols by market cap from CoinGecko.
+
+    Stablecoins are filtered out automatically.
+
+    Parameters
+    ----------
+    limit : Maximum number of symbols to return (default 50, max 250).
+
+    Returns
+    -------
+    List of uppercase ticker symbols e.g. ["BTC", "ETH", "SOL", ...]
+    """
+    per_page = min(limit + len(_STABLECOINS) + 5, 250)  # fetch extra to cover filtered ones
+    cache_key = f"top_coins:{per_page}"
+    cached = _cache_get(cache_key)
+    if cached is not None:
+        return cached[:limit]  # type: ignore[index]
+
+    data = _get(
+        f"{BASE_URL}/coins/markets",
+        params={
+            "vs_currency": "usd",
+            "order": "market_cap_desc",
+            "per_page": per_page,
+            "page": 1,
+            "sparkline": False,
+        },
+    )
+
+    symbols: list[str] = []
+    for coin in data:
+        sym = coin.get("symbol", "").upper()
+        if sym and sym not in _STABLECOINS:
+            symbols.append(sym)
+        if len(symbols) >= limit:
+            break
+
+    _cache_set(cache_key, symbols)
+    return symbols
 
 
 def build_ohlcv_dataframe(chart_data: dict) -> "pandas.DataFrame":  # type: ignore[name-defined]

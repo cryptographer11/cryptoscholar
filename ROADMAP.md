@@ -6,7 +6,7 @@
 - debate: Claude AI bull/bear synthesis
 - Rule-based regime detection (low/mid/high vol)
 
-## v0.2.0 (current)
+## v0.2.0 (released)
 - Binance public API for real OHLCV candles (1,200 req/min, no auth required); CoinGecko retained as fallback
 - `market_context` tool: BTC dominance trend + velocity, ETH/BTC ratio trend, TOTAL3 market cap
 - ARS (Altcoin Rotation Score) — composite of BTC dominance direction, ETH/BTC trend, TOTAL3
@@ -14,11 +14,12 @@
 - Stablecoin supply trend via DefiLlama public API
 - `data_source` field in analyze_coin output (`binance` or `coingecko`)
 
-## v0.3.0 — Multi-Timeframe + Scale
-- 4H + weekly analysis alongside daily; MTF alignment bonus/penalty in TSS
-- RSI divergence detection (bullish/bearish)
-- `top_coins` tool — auto-fetch top 50 by market cap and rank without a manual symbol list
-- Batch ranking optimisation to handle 50+ coins efficiently
+## v0.3.0 (current)
+- 4H candles from Binance; MTF alignment bonus/penalty in TSS (±3 pts from 4H EMA-20 vs EMA-50)
+- RSI divergence detection (bullish/bearish/none) added to `analyze_coin` and `rank_coins`
+- `top_coins` tool — auto-fetch top 50 by market cap, filter stablecoins, rank by TSS
+- Parallel batch ranking via `ThreadPoolExecutor` (8 workers) — handles 50+ coins efficiently
+- `SYMBOL_TO_ID` map expanded from 20 → 65 entries covering the full top-50 universe
 
 ## v0.4.0 — Watchlist + Alerts
 - Persistent watchlist (SQLite) with named lists

@@ -114,9 +114,13 @@ class TestComputeIndicators:
     def test_values_are_float_or_none(self) -> None:
         df = _make_ohlcv(100)
         result = compute_indicators(df)
+        _STRING_KEYS = {"rsi_divergence"}
         for key, val in result.items():
             if key.startswith("_"):
                 continue  # internal series, skip
+            if key in _STRING_KEYS:
+                assert isinstance(val, str), f"Key {key!r} should be str, got {type(val).__name__}"
+                continue
             assert val is None or isinstance(val, float), (
                 f"Key {key!r} has unexpected type {type(val).__name__}: {val!r}"
             )

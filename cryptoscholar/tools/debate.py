@@ -42,6 +42,8 @@ def _format_ta_message(analysis: dict) -> str:
         f"HV-20: {_fmt(ind.get('hv_20'))}%",
         f"RS vs BTC (20d): {_fmt(ind.get('rs_btc'))}%",
         f"Weekly EMA Slope: {_fmt(ind.get('weekly_ema_slope'))}%",
+        f"4H MTF Alignment: {analysis.get('mtf_alignment_4h', 'unavailable')}",
+        f"RSI Divergence: {ind.get('rsi_divergence', 'none')}",
     ]
     return "\n".join(lines)
 

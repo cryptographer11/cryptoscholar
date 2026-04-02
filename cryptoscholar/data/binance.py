@@ -76,6 +76,39 @@ def build_ohlcv_dataframe(klines: list[list]) -> pd.DataFrame:
     return df
 
 
+def fetch_ohlcv_4h(symbol: str, bars: int = 200) -> pd.DataFrame:
+    """
+    Fetch 4H OHLCV candles for multi-timeframe analysis.
+
+    Parameters
+    ----------
+    symbol : Ticker symbol e.g. "BTC", "SOL"
+    bars   : Number of 4H candles (200 bars ≈ 33 days)
+
+    Returns
+    -------
+    OHLCV DataFrame with DatetimeIndex.
+    """
+    pair = _to_binance_pair(symbol)
+    try:
+        klines = fetch_klines(pair, interval="4h", limit=min(bars, 1000))
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code == 400:
+            raise ValueError(
+                f"Symbol '{symbol}' (pair '{pair}') not found on Binance"
+            ) from exc
+        raise RuntimeError(f"Binance 4H request failed for {pair}: {exc}") from exc
+    except Exception as exc:
+        raise RuntimeError(f"Binance 4H request failed for {pair}: {exc}") from exc
+
+    if not klines:
+        raise ValueError(f"Binance returned empty 4H klines for '{pair}'")
+
+    df = build_ohlcv_dataframe(klines)
+    logger.debug("Binance 4H: fetched %d candles for %s", len(df), pair)
+    return df
+
+
 def fetch_ohlcv(symbol: str, days: int = 300) -> pd.DataFrame:
     """
     Fetch real OHLCV candles for a symbol from Binance.
