@@ -8,7 +8,7 @@ Ask Claude *"Is SOL set up for a swing trade?"* and it fetches live data from Bi
 
 ## What it does
 
-CryptoScholar exposes 4 MCP tools that Claude can call natively:
+CryptoScholar exposes 5 MCP tools that Claude can call natively:
 
 ### `analyze_coin`
 Full technical analysis snapshot for any coin. Fetches 300 days of real OHLCV candles from Binance (with CoinGecko fallback) and computes:
@@ -19,11 +19,16 @@ Full technical analysis snapshot for any coin. Fetches 300 days of real OHLCV ca
 | **Momentum** | RSI-14, MACD (line / signal / histogram), ADX-14 |
 | **Volatility** | ATR-14, Bollinger Band width, Historical Volatility (20-day annualised) |
 | **Relative Strength** | Coin vs BTC (20-day ratio change) |
+| **Multi-timeframe** | 4H EMA alignment — ±3 TSS bonus/penalty based on 4H EMA-20 vs EMA-50 |
+| **RSI Divergence** | Bullish / bearish / none — price vs RSI extremes over last 30 bars |
 | **Regime** | Low / mid / high volatility classification |
-| **TSS** | Trend Strength Score — 0–100 composite (40% trend + 30% momentum + 30% RS) |
+| **TSS** | Trend Strength Score — 0–100 composite (40% trend + 30% momentum + 30% RS, ±3 MTF) |
 
 ### `rank_coins`
-Pass a list of symbols and get them back ranked by TSS. Useful for quickly identifying the strongest setups across your watchlist.
+Pass a list of symbols and get them back ranked by TSS. Runs in parallel (up to 8 workers) for fast results on large lists. Each result includes TSS, regime, EMA alignment, 4H MTF alignment, RSI divergence, RSI-14, ADX-14, and RS vs BTC.
+
+### `top_coins`
+No symbol list needed. Fetches the top 50 coins by market cap from CoinGecko, filters out stablecoins automatically, and returns them ranked by TSS — useful for a quick market-wide scan.
 
 ### `market_context`
 Macro market signals to frame individual coin analysis. Uses CoinGecko global data and DefiLlama stablecoin supply. Returns:
