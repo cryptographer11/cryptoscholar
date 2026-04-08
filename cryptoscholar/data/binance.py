@@ -13,6 +13,7 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 BASE_URL = "https://api.binance.com/api/v3"
+_FAPI_BASE_URL = "https://fapi.binance.com/fapi/v1"
 
 # Override map for symbols that don't follow the simple SYMBOL+USDT convention
 _BINANCE_SYMBOL_OVERRIDES: dict[str, str] = {
@@ -74,6 +75,46 @@ def build_ohlcv_dataframe(klines: list[list]) -> pd.DataFrame:
     df = pd.DataFrame(rows)
     df = df.set_index("timestamp")
     return df
+
+
+def fetch_funding_rate(symbol: str) -> Optional[float]:
+    """
+    Fetch current USDT-M perpetual funding rate from Binance Futures.
+
+    Parameters
+    ----------
+    symbol : Ticker symbol e.g. "BTC", "SOL"
+
+    Returns
+    -------
+    Funding rate as float (e.g. 0.0001 = 0.01%), or None if the symbol
+    has no perpetual future or the request fails.
+
+    Interpretation
+    --------------
+    > +0.05%  : over-leveraged longs — bearish signal
+    > +0.01%  : mild long bias
+    near 0    : balanced
+    < -0.01%  : mild short bias — contrarian bullish
+    < -0.05%  : over-leveraged shorts — strong contrarian bullish
+    """
+    pair = _to_binance_pair(symbol)
+    url = f"{_FAPI_BASE_URL}/premiumIndex"
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            resp = client.get(url, params={"symbol": pair})
+            if resp.status_code == 400:
+                logger.debug("No USDT-M futures for %s (%s)", symbol, pair)
+                return None
+            resp.raise_for_status()
+        data = resp.json()
+        rate_str = data.get("lastFundingRate")
+        if rate_str is None:
+            return None
+        return float(rate_str)
+    except Exception as exc:
+        logger.debug("Could not fetch funding rate for %s: %s", symbol, exc)
+        return None
 
 
 def fetch_ohlcv_4h(symbol: str, bars: int = 200) -> pd.DataFrame:

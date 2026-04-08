@@ -4,7 +4,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from cryptoscholar.data.coingecko import _STABLECOINS, fetch_top_coins_by_market_cap
+from cryptoscholar.data.coingecko import (
+    _STABLECOINS,
+    _WRAPPED_TOKENS,
+    fetch_top_coins_by_market_cap,
+)
 from cryptoscholar.tools.top_coins import top_coins
 
 
@@ -12,8 +16,14 @@ from cryptoscholar.tools.top_coins import top_coins
 # fetch_top_coins_by_market_cap
 # ---------------------------------------------------------------------------
 
-def _make_market_response(symbols: list[str]) -> list[dict]:
-    return [{"symbol": s.lower(), "id": s.lower(), "market_cap": 1_000_000} for s in symbols]
+_HIGH_VOLUME = 50_000_000  # $50M — safely above the $10M threshold
+
+
+def _make_market_response(symbols: list[str], volume: float = _HIGH_VOLUME) -> list[dict]:
+    return [
+        {"symbol": s.lower(), "id": s.lower(), "market_cap": 1_000_000_000, "total_volume": volume}
+        for s in symbols
+    ]
 
 
 class TestFetchTopCoinsByMarketCap:
@@ -27,6 +37,28 @@ class TestFetchTopCoinsByMarketCap:
         assert "USDC" not in result
         assert "BTC" in result
         assert "ETH" in result
+
+    def test_filters_wrapped_tokens(self):
+        raw = _make_market_response(["BTC", "WBTC", "ETH", "WETH", "SOL"])
+        with patch("cryptoscholar.data.coingecko._get", return_value=raw), \
+             patch("cryptoscholar.data.coingecko._cache_get", return_value=None), \
+             patch("cryptoscholar.data.coingecko._cache_set"):
+            result = fetch_top_coins_by_market_cap(limit=10)
+        assert "WBTC" not in result
+        assert "WETH" not in result
+        assert "BTC" in result
+        assert "ETH" in result
+
+    def test_filters_low_volume_coins(self):
+        raw = _make_market_response(["BTC", "LOWVOL"], volume=_HIGH_VOLUME)
+        # Override LOWVOL to have tiny volume
+        raw[1]["total_volume"] = 1_000_000  # $1M — below threshold
+        with patch("cryptoscholar.data.coingecko._get", return_value=raw), \
+             patch("cryptoscholar.data.coingecko._cache_get", return_value=None), \
+             patch("cryptoscholar.data.coingecko._cache_set"):
+            result = fetch_top_coins_by_market_cap(limit=10)
+        assert "LOWVOL" not in result
+        assert "BTC" in result
 
     def test_respects_limit(self):
         raw = _make_market_response([f"COIN{i}" for i in range(100)])
@@ -60,6 +92,16 @@ class TestFetchTopCoinsByMarketCap:
             result = fetch_top_coins_by_market_cap(limit=50)
         for stable in _STABLECOINS:
             assert stable not in result
+        assert "BTC" in result
+
+    def test_all_known_wrapped_tokens_filtered(self):
+        raw = _make_market_response(list(_WRAPPED_TOKENS) + ["BTC"])
+        with patch("cryptoscholar.data.coingecko._get", return_value=raw), \
+             patch("cryptoscholar.data.coingecko._cache_get", return_value=None), \
+             patch("cryptoscholar.data.coingecko._cache_set"):
+            result = fetch_top_coins_by_market_cap(limit=50)
+        for wrapped in _WRAPPED_TOKENS:
+            assert wrapped not in result
         assert "BTC" in result
 
     def test_empty_response_returns_empty_list(self):

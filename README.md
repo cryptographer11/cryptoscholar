@@ -8,7 +8,7 @@ Ask Claude *"Is SOL set up for a swing trade?"* and it fetches live data from Bi
 
 ## What it does
 
-CryptoScholar exposes 5 MCP tools that Claude can call natively:
+CryptoScholar exposes 6 MCP tools that Claude can call natively:
 
 ### `analyze_coin`
 Full technical analysis snapshot for any coin. Fetches 300 days of real OHLCV candles from Binance (with CoinGecko fallback) and computes:
@@ -21,24 +21,33 @@ Full technical analysis snapshot for any coin. Fetches 300 days of real OHLCV ca
 | **Relative Strength** | Coin vs BTC (20-day ratio change) |
 | **Multi-timeframe** | 4H EMA alignment — ±3 TSS bonus/penalty based on 4H EMA-20 vs EMA-50 |
 | **RSI Divergence** | Bullish / bearish / none — price vs RSI extremes over last 30 bars |
+| **OBV Trend** | On-Balance Volume direction (rising / falling / flat) — ±2 TSS confirmation bonus |
+| **Funding Rate** | Current USDT-M perpetual funding rate — positive extremes = over-leveraged longs |
 | **Regime** | Low / mid / high volatility classification |
-| **TSS** | Trend Strength Score — 0–100 composite (40% trend + 30% momentum + 30% RS, ±3 MTF) |
+| **TSS** | Trend Strength Score — 0–100 composite (40% trend + 30% momentum + 30% RS ± MTF ± OBV) |
 
 ### `rank_coins`
-Pass a list of symbols and get them back ranked by TSS. Runs in parallel (up to 8 workers) for fast results on large lists. Each result includes TSS, regime, EMA alignment, 4H MTF alignment, RSI divergence, RSI-14, ADX-14, and RS vs BTC.
+Pass a list of symbols and get them back ranked by TSS. Runs in parallel (up to 8 workers) for fast results on large lists. Each result includes TSS, regime, EMA alignment, 4H MTF alignment, RSI divergence, OBV trend, funding rate, RSI-14, ADX-14, and RS vs BTC.
 
 ### `top_coins`
-No symbol list needed. Fetches the top 50 coins by market cap from CoinGecko, filters out stablecoins automatically, and returns them ranked by TSS — useful for a quick market-wide scan.
+No symbol list needed. Fetches the top 50 coins by market cap from CoinGecko and returns them ranked by TSS. Smart filtering automatically removes:
+- Stablecoins (USDT, USDC, DAI, etc.)
+- Wrapped / synthetic tokens (WBTC, WETH, stETH, cbBTC, etc.)
+- Low-liquidity coins with < $10M daily volume
+
+### `correlate_coins`
+Compute pairwise Pearson correlation of 30-day daily returns across 2–20 coins. Returns the full correlation matrix, high-correlation clusters (>0.85), and uncorrelated pairs (<0.30) — useful for portfolio diversification analysis.
 
 ### `market_context`
-Macro market signals to frame individual coin analysis. Uses CoinGecko global data and DefiLlama stablecoin supply. Returns:
+Macro market signals to frame individual coin analysis. Uses CoinGecko global data, DefiLlama stablecoin supply, and Alternative.me Fear & Greed Index. Returns:
 
 | Signal | Description |
 |--------|-------------|
 | **BTC dominance** | Current % and 30-day change — falling = capital rotating to alts |
 | **ETH/BTC ratio** | 20-day trend — rising = broadening rally |
 | **TOTAL3** | Altcoin market cap (ex-BTC, ex-ETH) 30-day change |
-| **Stablecoin supply** | Total stablecoin market cap and 30-day trend (rising = more buying powder) |
+| **Stablecoin supply** | Total stablecoin market cap and 30-day trend (rising = more buying power) |
+| **Fear & Greed** | Alternative.me index (0–100) — extreme fear/greed applies ±5 modifier to MRS |
 | **ARS** | Altcoin Rotation Score 0–100 — how favourable macro is for alts |
 | **MRS** | Market Readiness Score 0–100 — overall market readiness for upside moves |
 
@@ -52,13 +61,13 @@ No API key required for market data. Only `ANTHROPIC_API_KEY` is needed for the 
 
 ---
 
-## What's new in v0.3.0
+## What's new in v0.4.0
 
-- **Multi-timeframe analysis** — fetches 4H candles alongside daily. If 4H EMA-20 > EMA-50, TSS gets a +3 bonus; bearish 4H alignment subtracts 3. Gives a finer-grained entry signal.
-- **RSI divergence detection** — `analyze_coin` and `rank_coins` now return a `rsi_divergence` field: `bullish`, `bearish`, or `none`. Bullish divergence (price lower low + RSI higher low) can signal a trend reversal before it appears in EMAs.
-- **`top_coins` tool** — new fifth tool. Fetches the top 50 coins by market cap from CoinGecko, filters out stablecoins automatically, and returns them ranked by TSS. No symbol list needed.
-- **Batch ranking optimisation** — `rank_coins` now analyses coins in parallel (up to 8 workers via `ThreadPoolExecutor`). A 50-coin ranking that previously ran sequentially now completes in a fraction of the time.
-- **Expanded symbol map** — `SYMBOL_TO_ID` grows from 20 → 65 entries, covering the full top-50 market cap universe. Fewer fallback API search calls when using `top_coins`.
+- **OBV volume confirmation** — On-Balance Volume trend (`rising` / `falling` / `flat`) is now computed for every coin. A rising OBV confirming an uptrend adds +2 to TSS; diverging volume subtracts 2. Exposed in `analyze_coin` and `rank_coins`.
+- **Funding rates** — `analyze_coin` now fetches the current USDT-M perpetual funding rate from Binance Futures. Positive extremes signal over-leveraged longs (bearish lean); deeply negative rates signal a crowded short (contrarian bullish). Returns `null` for coins with no perpetual.
+- **Fear & Greed Index** — `market_context` now includes the Alternative.me Fear & Greed Index (`fear_greed_value` 0–100 and `fear_greed_label`). Extreme fear (<20) adds +5 to MRS; extreme greed (>80) subtracts 5. No API key required.
+- **Smart `top_coins` filtering** — beyond stablecoin exclusion, `top_coins` now also filters wrapped tokens (WBTC, WETH, stETH, cbBTC, and 11 others) and coins with < $10M daily volume. Cleaner, more actionable rankings.
+- **`correlate_coins` tool** — new sixth tool. Pass 2–20 symbols and get back a full pairwise Pearson correlation matrix of 30-day daily returns, plus pre-computed high-correlation clusters and uncorrelated pairs for quick diversification checks.
 
 ---
 
@@ -99,6 +108,7 @@ Restart Claude Code. You can now ask:
 - *"Show me the top 50 coins ranked by trend strength"*
 - *"What does the macro market look like right now?"*
 - *"Give me the bull and bear case for DOGE based on current TA"*
+- *"How correlated are BTC, ETH, SOL, and AVAX over the last month?"*
 
 ---
 
@@ -124,7 +134,7 @@ Restart Claude Code. You can now ask:
   <em>Full technical analysis snapshot for SOL — indicators, scoring, and bear case in one response</em>
 </p>
 
-`analyze_coin` returns a structured breakdown covering EMA stack alignment, RSI, MACD, ADX, ATR, Bollinger Band width, and relative strength vs BTC — all computed from 300 days of live Binance candles. Claude then reads the raw indicator values to generate a grounded bear case: EMA-200 resistance, weekly slope steepening, and MACD crossdown risk. No chart-switching, no copy-pasting — the full TA context is already in Claude's window.
+`analyze_coin` returns a structured breakdown covering EMA stack alignment, RSI, MACD, ADX, ATR, Bollinger Band width, OBV trend, funding rate, and relative strength vs BTC — all computed from 300 days of live Binance candles. Claude then reads the raw indicator values to generate a grounded bear case: EMA-200 resistance, weekly slope steepening, and MACD crossdown risk. No chart-switching, no copy-pasting — the full TA context is already in Claude's window.
 
 ---
 
@@ -140,9 +150,12 @@ Restart Claude Code. You can now ask:
   "total3_30d_change_pct": -14.6,
   "stablecoin_supply_usd": 196500000000,
   "stablecoin_30d_change_pct": 2.8,
+  "fear_greed_value": 22,
+  "fear_greed_label": "Fear",
   "btc_trend_score": 35.0,
   "ars": 28.5,
   "stablecoin_score": 60.0,
+  "fear_greed_modifier": 0.0,
   "mrs": 42.3
 }
 ```
@@ -153,12 +166,14 @@ Restart Claude Code. You can now ask:
   "symbol": "SOL",
   "data_source": "binance",
   "price": 142.30,
-  "tss": 77.2,
+  "tss": 79.2,
   "regime": "mid_vol",
   "vrs": 55,
   "ema_alignment": "full_bull",
   "mtf_alignment_4h": "bullish",
   "rsi_divergence": "none",
+  "obv_trend": "rising",
+  "funding_rate": 0.00012,
   "indicators": {
     "rsi_14": 61.4,
     "macd_hist": 0.42,
@@ -167,16 +182,35 @@ Restart Claude Code. You can now ask:
     "hv_20": 68.4,
     "rs_btc": 4.2,
     "bb_width": 0.18,
-    "rsi_divergence": "none"
+    "rsi_divergence": "none",
+    "obv_trend": "rising"
   }
+}
+```
+
+**`correlate_coins(["BTC", "ETH", "SOL", "BNB"])`**
+```json
+{
+  "symbols": ["BTC", "ETH", "SOL", "BNB"],
+  "lookback_days": 30,
+  "matrix": {
+    "BTC": {"BTC": 1.0, "ETH": 0.91, "SOL": 0.78, "BNB": 0.83},
+    "ETH": {"BTC": 0.91, "ETH": 1.0, "SOL": 0.82, "BNB": 0.79},
+    "SOL": {"BTC": 0.78, "ETH": 0.82, "SOL": 1.0, "BNB": 0.71},
+    "BNB": {"BTC": 0.83, "ETH": 0.79, "SOL": 0.71, "BNB": 1.0}
+  },
+  "high_correlation_pairs": [
+    {"symbol_a": "BTC", "symbol_b": "ETH", "correlation": 0.91}
+  ],
+  "uncorrelated_pairs": []
 }
 ```
 
 **`debate("SOL")`**
 ```json
 {
-  "bull_case": "SOL is in a full bullish EMA stack with RSI at 61 — healthy momentum without overbought conditions. ADX at 28 confirms trending structure, and relative strength vs BTC is positive at +4.2%, signalling capital rotation into SOL.",
-  "bear_case": "Historical volatility at 68% is elevated, and Bollinger Band width is widening — conditions that often precede sharp reversals. A break below EMA-20 would invalidate the current trend structure.",
+  "bull_case": "SOL is in a full bullish EMA stack with RSI at 61 — healthy momentum without overbought conditions. ADX at 28 confirms trending structure, and relative strength vs BTC is positive at +4.2%, signalling capital rotation into SOL. Rising OBV confirms volume is flowing in on up-days.",
+  "bear_case": "Historical volatility at 68% is elevated, and Bollinger Band width is widening — conditions that often precede sharp reversals. A break below EMA-20 would invalidate the current trend structure. Funding rate at 0.012% hints at building long leverage.",
   "bottom_line": "Technicals are constructive for continuation but volatility is high; position sizing should reflect the risk."
 }
 ```
@@ -214,17 +248,19 @@ Claude (MCP call)
          │    ├── analyze.py        Orchestrates fetch → indicators → regime → score
          │    ├── rank.py           Runs analyze_coin in parallel, sorts by TSS
          │    ├── top_coins.py      Fetches top N by market cap, delegates to rank_coins
+         │    ├── correlate.py      Pairwise Pearson correlation of 30-day returns
          │    ├── debate.py         Builds prompt from TA data, calls Claude API
          │    └── market_context.py ARS + MRS + macro signals
          ├── ta/
-         │    ├── indicators.py     pandas-ta + custom HV / RS functions
-         │    ├── scoring.py        TSS: trend + momentum + relative strength
+         │    ├── indicators.py     pandas-ta + custom HV / RS / OBV functions
+         │    ├── scoring.py        TSS: trend + momentum + RS ± MTF ± OBV bonuses
          │    └── regime.py         Rule-based vol regime (ATR + BBW percentile)
          ├── market/
-         │    └── context.py        BTC dominance, ETH/BTC, TOTAL3, ARS, MRS
+         │    └── context.py        BTC dominance, ETH/BTC, TOTAL3, F&G, ARS, MRS
          └── data/
-              ├── binance.py        Binance klines client (1,200 req/min, no auth)
+              ├── binance.py        Binance klines + funding rate (1,200 req/min, no auth)
               ├── coingecko.py      CoinGecko client, 5-min TTL cache, OHLCV builder
+              ├── alternative_me.py Fear & Greed Index (Alternative.me, 1-hr cache)
               └── defillama.py      DefiLlama stablecoin supply history
 ```
 
@@ -232,20 +268,23 @@ Claude (MCP call)
 1. Map symbol → CoinGecko ID (`SOL` → `solana`)
 2. Fetch 300-day daily OHLCV from Binance (`SOLUSDT` klines); fall back to CoinGecko if unavailable
 3. Fetch 200-bar 4H OHLCV from Binance for multi-timeframe analysis
-4. Compute all daily indicators via pandas-ta (EMA, RSI, MACD, ADX, ATR, BB, HV, RS vs BTC)
-5. Compute 4H indicators (EMA-20/50) and derive MTF alignment bonus (±3 TSS pts)
-6. Detect RSI divergence over last 30 bars (bullish/bearish/none)
-7. Classify regime (ATR + BB width percentile position vs historical range)
-8. Compute TSS (weighted composite of trend, momentum, RS vs BTC + MTF bonus)
-9. Fetch current market data (price, market cap, 24h change) from CoinGecko
-10. Return structured dict to Claude
+4. Fetch USDT-M perpetual funding rate from Binance Futures (null if no perpetual)
+5. Compute all daily indicators via pandas-ta (EMA, RSI, MACD, ADX, ATR, BB, HV, OBV, RS vs BTC)
+6. Compute OBV trend (EMA-10 of OBV slope over last 5 bars)
+7. Compute 4H indicators (EMA-20/50) and derive MTF alignment bonus (±3 TSS pts)
+8. Detect RSI divergence over last 30 bars (bullish/bearish/none)
+9. Classify regime (ATR + BB width percentile position vs historical range)
+10. Compute TSS (weighted composite of trend, momentum, RS vs BTC ± MTF bonus ± OBV bonus)
+11. Fetch current market data (price, market cap, 24h change) from CoinGecko
+12. Return structured dict to Claude
 
 **Data flow for `market_context()`:**
 1. Fetch total market cap history (30d) from CoinGecko `/global/market_cap_chart`
 2. Fetch BTC and ETH market chart history (30d) from CoinGecko
 3. Fetch stablecoin supply history from DefiLlama
-4. Compute BTC dominance trend, ETH/BTC ratio trend, TOTAL3 change
-5. Score into ARS (altcoin rotation) and MRS (market readiness)
+4. Fetch Fear & Greed Index from Alternative.me (1-hr cache)
+5. Compute BTC dominance trend, ETH/BTC ratio trend, TOTAL3 change
+6. Score into ARS (altcoin rotation) and MRS (market readiness + F&G modifier)
 
 ---
 
@@ -258,7 +297,7 @@ make coverage        # coverage report
 make lint-security   # bandit security scan
 ```
 
-**101 tests, 0 failures.**
+**143 tests, 0 failures.**
 
 ---
 
@@ -267,10 +306,11 @@ make lint-security   # bandit security scan
 See [ROADMAP.md](ROADMAP.md) for planned versions. Highlights:
 
 - **v0.3** ✅ — Multi-timeframe (4H), RSI divergence, `top_coins` tool, parallel batch ranking
-- **v0.4** — Persistent watchlist + Claude-triggered regime-change and TSS threshold alerts
-- **v0.5** — HMM volatility regime (3-state GaussianHMM replacing rule-based classifier)
-- **v0.6** — `generate_report` tool: cluster → write → assemble pipeline for formatted markdown reports
-- **v0.7** — `research_coin` tool: web search + Jina reader for news and narrative context
+- **v0.4** ✅ — OBV confirmation, funding rates, Fear & Greed, smart filtering, `correlate_coins`
+- **v0.5** — Persistent watchlist + Claude-triggered regime-change and TSS threshold alerts
+- **v0.6** — HMM volatility regime (3-state GaussianHMM replacing rule-based classifier)
+- **v0.7** — `generate_report` tool: cluster → write → assemble pipeline for formatted markdown reports
+- **v0.8** — `research_coin` tool: web search + Jina reader for news and narrative context
 
 ---
 

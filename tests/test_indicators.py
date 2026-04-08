@@ -114,7 +114,7 @@ class TestComputeIndicators:
     def test_values_are_float_or_none(self) -> None:
         df = _make_ohlcv(100)
         result = compute_indicators(df)
-        _STRING_KEYS = {"rsi_divergence"}
+        _STRING_KEYS = {"rsi_divergence", "obv_trend"}
         for key, val in result.items():
             if key.startswith("_"):
                 continue  # internal series, skip

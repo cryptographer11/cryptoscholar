@@ -128,17 +128,37 @@ def compute_stablecoin_score(stablecoin_30d_change_pct: Optional[float]) -> floa
     return 25.0
 
 
+def compute_fear_greed_modifier(fear_greed_value: Optional[int]) -> float:
+    """
+    MRS modifier based on Fear & Greed Index.
+
+    Extreme fear  (<20) → +5 (contrarian buy signal — historically bullish)
+    Extreme greed (>80) → -5 (overheated market — caution)
+    Everything else     →  0
+    """
+    if fear_greed_value is None:
+        return 0.0
+    if fear_greed_value < 20:
+        return 5.0
+    if fear_greed_value > 80:
+        return -5.0
+    return 0.0
+
+
 def compute_mrs(
     btc_trend_score: float,
     ars: float,
     stablecoin_score: float,
+    fear_greed_modifier: float = 0.0,
 ) -> float:
     """
     Market Readiness Score (0-100).
 
     Weights: 40% BTC trend + 30% ARS + 30% stablecoin supply.
+    Optional fear_greed_modifier applies ±5 for extreme F&G readings.
     """
-    return round(0.4 * btc_trend_score + 0.3 * ars + 0.3 * stablecoin_score, 1)
+    base = 0.4 * btc_trend_score + 0.3 * ars + 0.3 * stablecoin_score
+    return round(min(max(base + fear_greed_modifier, 0.0), 100.0), 1)
 
 
 # ---------------------------------------------------------------------------
@@ -329,6 +349,12 @@ def fetch_market_context() -> dict:
         result["stablecoin_supply_usd"] = None
         result["stablecoin_30d_change_pct"] = None
 
+    # --- Fear & Greed Index ---
+    from cryptoscholar.data.alternative_me import fetch_fear_greed
+    fear_greed = fetch_fear_greed()
+    result["fear_greed_value"] = fear_greed["value"] if fear_greed else None
+    result["fear_greed_label"] = fear_greed["label"] if fear_greed else None
+
     # --- Composite scores ---
     btc_trend_score = compute_btc_trend_score(result.get("btc_price_30d_change_pct"))
     ars = compute_ars(
@@ -337,11 +363,13 @@ def fetch_market_context() -> dict:
         result.get("total3_30d_change_pct"),
     )
     stablecoin_score = compute_stablecoin_score(result.get("stablecoin_30d_change_pct"))
-    mrs = compute_mrs(btc_trend_score, ars, stablecoin_score)
+    fg_modifier = compute_fear_greed_modifier(result.get("fear_greed_value"))
+    mrs = compute_mrs(btc_trend_score, ars, stablecoin_score, fg_modifier)
 
     result["btc_trend_score"] = btc_trend_score
     result["ars"] = ars
     result["stablecoin_score"] = stablecoin_score
+    result["fear_greed_modifier"] = fg_modifier
     result["mrs"] = mrs
 
     return result

@@ -91,6 +91,14 @@ def analyze_coin(symbol: str, btc_df=None) -> dict:
     except Exception as exc:
         logger.info("Could not fetch 4H data for %s (%s) — MTF bonus skipped", symbol, exc)
 
+    # Fetch funding rate (Binance USDT-M perpetuals only — None for spot-only coins)
+    funding_rate: Optional[float] = None
+    try:
+        from cryptoscholar.data.binance import fetch_funding_rate
+        funding_rate = fetch_funding_rate(symbol)
+    except Exception as exc:
+        logger.debug("Funding rate fetch failed for %s: %s", symbol, exc)
+
     # Regime
     regime = classify_regime(indicators)
     vrs = compute_vrs(regime)
@@ -139,6 +147,8 @@ def analyze_coin(symbol: str, btc_df=None) -> dict:
         "ema_alignment": ema_alignment,
         "mtf_alignment_4h": mtf_alignment_4h,
         "rsi_divergence": indicators.get("rsi_divergence", "none"),
+        "obv_trend": indicators.get("obv_trend", "flat"),
+        "funding_rate": funding_rate,
         "indicators": public_indicators,
     }
 

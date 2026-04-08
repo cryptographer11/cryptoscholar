@@ -121,10 +121,10 @@ def _cache_set(key: str, value: object) -> None:
 def _get(url: str, params: dict | None = None, retries: int = 3) -> dict:
     """GET with rate limiting, retry, and exponential backoff. Handles 429 with a longer wait."""
     last_exc: Exception | None = None
-    for attempt in range(retries):
-        _rate_limit()
-        try:
-            with httpx.Client(timeout=30.0) as client:
+    with httpx.Client(timeout=30.0) as client:
+        for attempt in range(retries):
+            _rate_limit()
+            try:
                 resp = client.get(url, params=params)
                 if resp.status_code == 429:
                     wait = 60
@@ -133,13 +133,13 @@ def _get(url: str, params: dict | None = None, retries: int = 3) -> dict:
                     continue
                 resp.raise_for_status()
                 return resp.json()
-        except Exception as exc:
-            last_exc = exc
-            if attempt < retries - 1:
-                sleep_time = 2 ** attempt
-                logger.warning("Request failed (attempt %d/%d): %s — retrying in %ds",
-                               attempt + 1, retries, exc, sleep_time)
-                time.sleep(sleep_time)
+            except Exception as exc:
+                last_exc = exc
+                if attempt < retries - 1:
+                    sleep_time = 2 ** attempt
+                    logger.warning("Request failed (attempt %d/%d): %s — retrying in %ds",
+                                   attempt + 1, retries, exc, sleep_time)
+                    time.sleep(sleep_time)
     raise RuntimeError(f"CoinGecko request failed after {retries} attempts: {last_exc}") from last_exc
 
 
@@ -250,12 +250,24 @@ _STABLECOINS: frozenset[str] = frozenset({
     "FDUSD", "PYUSD", "USDE", "USDS",
 })
 
+# Wrapped/synthetic tokens that track another asset — not independently tradable
+_WRAPPED_TOKENS: frozenset[str] = frozenset({
+    "WBTC", "WETH", "STETH", "WSTETH", "CBBTC", "LBTC", "BTCB", "RENBTC",
+    "HBTC", "WEETH", "RETH", "EZETH", "RSETH", "BBTC", "SOLVBTC",
+})
+
+# Minimum 24h trading volume in USD — filters illiquid coins from the top-N list
+_MIN_VOLUME_USD: float = 10_000_000  # $10M
+
 
 def fetch_top_coins_by_market_cap(limit: int = 50) -> list[str]:
     """
     Fetch top N cryptocurrency symbols by market cap from CoinGecko.
 
-    Stablecoins are filtered out automatically.
+    Filters applied automatically:
+    - Stablecoins (USDT, USDC, DAI, etc.)
+    - Wrapped/synthetic tokens (WBTC, WETH, stETH, etc.)
+    - Low-liquidity coins with < $10M daily volume
 
     Parameters
     ----------
@@ -265,7 +277,9 @@ def fetch_top_coins_by_market_cap(limit: int = 50) -> list[str]:
     -------
     List of uppercase ticker symbols e.g. ["BTC", "ETH", "SOL", ...]
     """
-    per_page = min(limit + len(_STABLECOINS) + 5, 250)  # fetch extra to cover filtered ones
+    _excluded = _STABLECOINS | _WRAPPED_TOKENS
+    # Fetch extra rows to account for filtered coins
+    per_page = min(limit + len(_excluded) + 10, 250)
     cache_key = f"top_coins:{per_page}"
     cached = _cache_get(cache_key)
     if cached is not None:
@@ -285,8 +299,14 @@ def fetch_top_coins_by_market_cap(limit: int = 50) -> list[str]:
     symbols: list[str] = []
     for coin in data:
         sym = coin.get("symbol", "").upper()
-        if sym and sym not in _STABLECOINS:
-            symbols.append(sym)
+        if not sym:
+            continue
+        if sym in _excluded:
+            continue
+        volume = coin.get("total_volume") or 0
+        if volume < _MIN_VOLUME_USD:
+            continue
+        symbols.append(sym)
         if len(symbols) >= limit:
             break
 

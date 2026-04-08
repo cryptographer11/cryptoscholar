@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 from mcp.server.fastmcp import FastMCP
 
 from cryptoscholar.tools.analyze import analyze_coin as _analyze_coin
+from cryptoscholar.tools.correlate import correlate_coins as _correlate_coins
 from cryptoscholar.tools.debate import debate as _debate
 from cryptoscholar.tools.market_context import market_context as _market_context
 from cryptoscholar.tools.rank import rank_coins as _rank_coins
@@ -40,13 +41,13 @@ def analyze_coin(symbol: str) -> dict:
     """Perform full technical analysis on a cryptocurrency.
 
     Fetches 300 days of daily OHLCV from Binance (or CoinGecko as fallback),
-    computes EMA, RSI, MACD, ADX, ATR, Bollinger Bands, historical volatility,
-    and relative strength vs BTC. Also fetches 4H candles for multi-timeframe
-    alignment and detects RSI divergence.
+    computes EMA, RSI, MACD, ADX, ATR, Bollinger Bands, OBV trend,
+    historical volatility, and relative strength vs BTC.
+    Also fetches 4H candles for multi-timeframe alignment, detects RSI
+    divergence, and fetches the USDT-M perpetual funding rate.
 
-    Returns indicators, TSS score (with ±3 MTF bonus), regime label,
-    mtf_alignment_4h (bullish/bearish/neutral/unavailable),
-    rsi_divergence (bullish/bearish/none), and the data source used.
+    Returns indicators, TSS score (base ± MTF bonus ± OBV bonus), regime label,
+    mtf_alignment_4h, rsi_divergence, obv_trend, funding_rate, and data source.
     """
     return _analyze_coin(symbol)
 
@@ -60,8 +61,8 @@ def rank_coins(symbols: list[str]) -> list[dict]:
     in parallel (up to 8 workers) for fast results on large lists.
 
     Each result includes: tss, regime, ema_alignment, mtf_alignment_4h,
-    rsi_divergence, rsi_14, adx_14, rs_btc, price, price_change_24h_pct.
-    Failed symbols are skipped gracefully.
+    rsi_divergence, obv_trend, funding_rate, rsi_14, adx_14, rs_btc,
+    price, price_change_24h_pct. Failed symbols are skipped gracefully.
     """
     return _rank_coins(symbols)
 
@@ -82,14 +83,32 @@ def market_context() -> dict:
     """Fetch macro market context signals for the overall crypto market.
 
     Returns BTC dominance trend, ETH/BTC ratio trend, TOTAL3 market cap trend,
-    stablecoin supply trend, and composite scores:
+    stablecoin supply trend, Fear & Greed Index, and composite scores:
       - ARS (Altcoin Rotation Score): how favourable macro is for alts (0-100)
       - MRS (Market Readiness Score): overall market readiness for upside (0-100)
+        MRS includes a ±5 Fear & Greed modifier (extreme fear/greed readings).
 
-    No API key required. Data from CoinGecko (rate-limited) and DefiLlama.
+    No API key required. Data from CoinGecko, DefiLlama, and Alternative.me.
     Results are cached for 5 minutes.
     """
     return _market_context()
+
+
+@mcp.tool()
+def correlate_coins(symbols: list[str]) -> dict:
+    """Compute pairwise Pearson correlation of 30-day daily returns.
+
+    Fetches price history for each symbol and builds a full correlation matrix.
+    Highlights high-correlation clusters (>0.85) and uncorrelated pairs (<0.30)
+    for portfolio diversification analysis.
+
+    Parameters
+    ----------
+    symbols : 2–20 ticker symbols e.g. ["BTC", "ETH", "SOL", "BNB"]
+
+    Returns matrix, high_correlation_pairs, and uncorrelated_pairs.
+    """
+    return _correlate_coins(symbols)
 
 
 @mcp.tool()
@@ -105,7 +124,7 @@ def top_coins(limit: int = 50) -> list[dict]:
 
 def main() -> None:
     """Run the MCP server."""
-    logger.info("Starting CryptoScholar MCP server v0.3.0")
+    logger.info("Starting CryptoScholar MCP server v0.4.0")
     mcp.run()
 
 

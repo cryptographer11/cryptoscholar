@@ -82,6 +82,22 @@ def score_momentum_component(ind: dict) -> float:
     return min(max(score, 0.0), 100.0)
 
 
+def compute_obv_bonus(ind: dict) -> float:
+    """
+    OBV volume confirmation bonus for TSS.
+
+    +2 if OBV trend is rising  (volume confirms the move)
+    -2 if OBV trend is falling (volume diverges — weakness signal)
+     0 if flat or data unavailable
+    """
+    obv_trend = ind.get("obv_trend")
+    if obv_trend == "rising":
+        return 2.0
+    if obv_trend == "falling":
+        return -2.0
+    return 0.0
+
+
 def compute_tss(ind: dict, ind_4h: Optional[dict] = None) -> float:
     """
     Trend Strength Score: 40% trend + 30% momentum + 30% RS.
@@ -96,4 +112,5 @@ def compute_tss(ind: dict, ind_4h: Optional[dict] = None) -> float:
     rs_score = min(max(50.0 + rs_raw * 2, 0.0), 100.0)
     base = 0.4 * trend + 0.3 * momentum + 0.3 * rs_score
     mtf_bonus = compute_4h_alignment_bonus(ind_4h) if ind_4h is not None else 0.0
-    return round(min(max(base + mtf_bonus, 0.0), 100.0), 1)
+    obv_bonus = compute_obv_bonus(ind)
+    return round(min(max(base + mtf_bonus + obv_bonus, 0.0), 100.0), 1)

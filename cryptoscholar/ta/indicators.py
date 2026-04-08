@@ -120,6 +120,51 @@ def detect_rsi_divergence(df: pd.DataFrame, window: int = 30) -> str:
     return "none"
 
 
+def calc_obv_trend(df: pd.DataFrame, ema_length: int = 10, window: int = 5) -> str:
+    """
+    Compute OBV trend direction using EMA of On-Balance Volume.
+
+    Computes OBV → smooths with EMA-10 → checks slope over last `window` bars.
+
+    Returns
+    -------
+    'rising'  — OBV EMA sloped up > 2% over window
+    'falling' — OBV EMA sloped down > 2% over window
+    'flat'    — otherwise or insufficient data
+    """
+    try:
+        import pandas_ta as ta
+    except ImportError as exc:
+        raise ImportError("pandas_ta is required: pip install pandas-ta") from exc
+
+    close = df["close"]
+    volume = df["volume"]
+
+    obv = ta.obv(close, volume)
+    if obv is None or len(obv.dropna()) < ema_length + window:
+        return "flat"
+
+    obv_ema = ta.ema(obv, length=ema_length)
+    if obv_ema is None or len(obv_ema.dropna()) < window:
+        return "flat"
+
+    tail = obv_ema.dropna().iloc[-window:]
+    if len(tail) < 2:
+        return "flat"
+
+    start_val = float(tail.iloc[0])
+    end_val = float(tail.iloc[-1])
+    if start_val == 0:
+        return "flat"
+
+    slope_pct = (end_val - start_val) / abs(start_val) * 100
+    if slope_pct > 2.0:
+        return "rising"
+    if slope_pct < -2.0:
+        return "falling"
+    return "flat"
+
+
 def compute_indicators(
     df: pd.DataFrame,
     btc_close: Optional[pd.Series] = None,
@@ -258,5 +303,8 @@ def compute_indicators(
 
     # --- RSI divergence ---
     result["rsi_divergence"] = detect_rsi_divergence(df)
+
+    # --- OBV trend ---
+    result["obv_trend"] = calc_obv_trend(df)
 
     return result

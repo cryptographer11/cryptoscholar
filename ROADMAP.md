@@ -14,25 +14,32 @@
 - Stablecoin supply trend via DefiLlama public API
 - `data_source` field in analyze_coin output (`binance` or `coingecko`)
 
-## v0.3.0 (current)
+## v0.3.0 (released)
 - 4H candles from Binance; MTF alignment bonus/penalty in TSS (±3 pts from 4H EMA-20 vs EMA-50)
 - RSI divergence detection (bullish/bearish/none) added to `analyze_coin` and `rank_coins`
 - `top_coins` tool — auto-fetch top 50 by market cap, filter stablecoins, rank by TSS
 - Parallel batch ranking via `ThreadPoolExecutor` (8 workers) — handles 50+ coins efficiently
 - `SYMBOL_TO_ID` map expanded from 20 → 65 entries covering the full top-50 universe
 
-## v0.4.0 — Watchlist + Alerts
+## v0.4.0 (current) — Signal Depth & Breadth
+- **Volume / OBV confirmation** — On-Balance Volume added to `analyze_coin`; OBV trend incorporated as a TSS sub-component (rising OBV on uptrend = confirmation bonus; divergence = penalty)
+- **Funding rates** — Binance perpetual funding rate fetched for `analyze_coin`; positive extreme = over-leveraged longs (bearish signal), negative extreme = over-leveraged shorts (contrarian bullish)
+- **Fear & Greed Index** — Alternative.me daily F&G score added to `market_context`; extreme fear / greed modifier applied to MRS (same logic as AltFlow)
+- **Smart `top_coins` filtering** — Beyond stablecoin exclusion: filter wrapped tokens (WBTC, WETH, stETH, cbBTC), low-liquidity coins (24h volume < threshold), and coins with <30 days of OHLCV history (insufficient for TSS)
+- **Correlation tool** — `correlate_coins` tool: given a list of symbols, returns a pairwise Pearson correlation matrix of 30-day daily returns; highlights high-correlation clusters (>0.85) and uncorrelated pairs (<0.3)
+
+## v0.5.0 — Watchlist + Alerts
 - Persistent watchlist (SQLite) with named lists
 - Claude-triggered alerts when regime changes or TSS crosses a user-defined threshold
 - Scheduled background analysis with digest summary
 
-## v0.5.0 — HMM Volatility Regime
+## v0.6.0 — HMM Volatility Regime
 - Replace rule-based regime with 3-state GaussianHMM (hv_20, atr_14, bb_width)
 - Auto-retrain every 7 days on accumulated price history
 - Persist trained model to ~/.cryptoscholar/hmm_model.pkl
 - `train_regime_model` tool for manual retrain
 
-## v0.6.0 — Analysis Report Generation
+## v0.7.0 — Analysis Report Generation
 - `generate_report` tool: 3-stage Cluster → Write → Assemble pipeline
 - Stage 1: cluster related signals/indicators into thematic groups per coin
 - Stage 2: write structured sections (trend, momentum, on-chain context, risks)
@@ -40,7 +47,7 @@
 - Support for multi-coin comparison reports (e.g. "compare BTC, ETH, SOL")
 - Optional: output as JSON for downstream consumption
 
-## v0.7.0 — Research & News Context
+## v0.8.0 — Research & News Context
 - `research_coin` tool: web search (DuckDuckGo + Jina reader) for news and narratives
 - Jina AI reader (`r.jina.ai`) converts URLs to clean markdown for LLM ingestion
 - Smart search cache: skip redundant searches when recent results are still relevant

@@ -53,6 +53,8 @@ def rank_coins(symbols: list[str]) -> list[dict]:
             "ema_alignment": analysis["ema_alignment"],
             "mtf_alignment_4h": analysis.get("mtf_alignment_4h", "unavailable"),
             "rsi_divergence": analysis.get("rsi_divergence", "none"),
+            "obv_trend": analysis.get("obv_trend", "flat"),
+            "funding_rate": analysis.get("funding_rate"),
             "rsi_14": analysis["indicators"].get("rsi_14"),
             "adx_14": analysis["indicators"].get("adx_14"),
             "rs_btc": analysis["indicators"].get("rs_btc"),
