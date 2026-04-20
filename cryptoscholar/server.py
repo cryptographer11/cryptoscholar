@@ -32,6 +32,15 @@ from cryptoscholar.tools.debate import debate as _debate
 from cryptoscholar.tools.market_context import market_context as _market_context
 from cryptoscholar.tools.rank import rank_coins as _rank_coins
 from cryptoscholar.tools.top_coins import top_coins as _top_coins
+from cryptoscholar.tools.watchlist import (
+    alert_check as _alert_check,
+    alert_set as _alert_set,
+    watchlist_add as _watchlist_add,
+    watchlist_lists as _watchlist_lists,
+    watchlist_remove as _watchlist_remove,
+    watchlist_scan as _watchlist_scan,
+    watchlist_show as _watchlist_show,
+)
 
 mcp = FastMCP("CryptoScholar")
 
@@ -122,9 +131,83 @@ def top_coins(limit: int = 50) -> list[dict]:
     return _top_coins(limit)
 
 
+@mcp.tool()
+def watchlist_add(symbols: list[str], list_name: str = "default") -> dict:
+    """Add symbols to a named watchlist (creates the list if it doesn't exist).
+
+    Returns which symbols were added vs already present.
+    """
+    return _watchlist_add(symbols, list_name)
+
+
+@mcp.tool()
+def watchlist_remove(symbols: list[str], list_name: str = "default") -> dict:
+    """Remove symbols from a watchlist. Also removes any alerts for those symbols."""
+    return _watchlist_remove(symbols, list_name)
+
+
+@mcp.tool()
+def watchlist_show(list_name: str = "default") -> dict:
+    """Show all symbols and configured alerts for a named watchlist.
+
+    Returns exists=False if the list hasn't been created yet.
+    """
+    return _watchlist_show(list_name)
+
+
+@mcp.tool()
+def watchlist_lists() -> list[dict]:
+    """List all named watchlists with symbol counts and creation timestamps."""
+    return _watchlist_lists()
+
+
+@mcp.tool()
+def watchlist_scan(list_name: str = "default") -> list[dict]:
+    """Run a full TSS analysis on every symbol in a watchlist and rank by TSS.
+
+    This is the digest view — a live snapshot of the entire watchlist right now.
+    Runs in parallel (up to 8 workers). Returns the same fields as rank_coins.
+    """
+    return _watchlist_scan(list_name)
+
+
+@mcp.tool()
+def alert_set(
+    symbol: str,
+    condition: str,
+    threshold: float | None = None,
+    list_name: str = "default",
+) -> dict:
+    """Set a TSS threshold or regime-change alert on a symbol.
+
+    Parameters
+    ----------
+    symbol    : Ticker e.g. "BTC"
+    condition : 'tss_above'     — fires when TSS >= threshold
+                'tss_below'     — fires when TSS <= threshold
+                'regime_change' — fires when regime changes from last known value
+    threshold : Required for tss_above / tss_below (0–100). Ignored for regime_change.
+    list_name : Watchlist to attach to. Symbol is auto-added if not already present.
+    """
+    return _alert_set(symbol, condition, threshold, list_name)
+
+
+@mcp.tool()
+def alert_check(list_name: str = "default") -> dict:
+    """Check all alerts in a watchlist against live TA data.
+
+    Fetches current TSS and regime for every alerted symbol (parallel),
+    reports which alerts have fired, and updates the stored baseline so
+    subsequent checks track drift correctly.
+
+    Returns triggered alerts with reason, current_tss, and current_regime.
+    """
+    return _alert_check(list_name)
+
+
 def main() -> None:
     """Run the MCP server."""
-    logger.info("Starting CryptoScholar MCP server v0.4.0")
+    logger.info("Starting CryptoScholar MCP server v0.5.0")
     mcp.run()
 
 

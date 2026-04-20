@@ -21,17 +21,19 @@
 - Parallel batch ranking via `ThreadPoolExecutor` (8 workers) — handles 50+ coins efficiently
 - `SYMBOL_TO_ID` map expanded from 20 → 65 entries covering the full top-50 universe
 
-## v0.4.0 (current) — Signal Depth & Breadth
+## v0.4.0 (released) — Signal Depth & Breadth
 - **Volume / OBV confirmation** — On-Balance Volume added to `analyze_coin`; OBV trend incorporated as a TSS sub-component (rising OBV on uptrend = confirmation bonus; divergence = penalty)
 - **Funding rates** — Binance perpetual funding rate fetched for `analyze_coin`; positive extreme = over-leveraged longs (bearish signal), negative extreme = over-leveraged shorts (contrarian bullish)
 - **Fear & Greed Index** — Alternative.me daily F&G score added to `market_context`; extreme fear / greed modifier applied to MRS (same logic as AltFlow)
 - **Smart `top_coins` filtering** — Beyond stablecoin exclusion: filter wrapped tokens (WBTC, WETH, stETH, cbBTC), low-liquidity coins (24h volume < threshold), and coins with <30 days of OHLCV history (insufficient for TSS)
 - **Correlation tool** — `correlate_coins` tool: given a list of symbols, returns a pairwise Pearson correlation matrix of 30-day daily returns; highlights high-correlation clusters (>0.85) and uncorrelated pairs (<0.3)
 
-## v0.5.0 — Watchlist + Alerts
-- Persistent watchlist (SQLite) with named lists
-- Claude-triggered alerts when regime changes or TSS crosses a user-defined threshold
-- Scheduled background analysis with digest summary
+## v0.5.0 (current) — Watchlist + Alerts
+- Persistent watchlist (SQLite) with named lists — `watchlist_add`, `watchlist_remove`, `watchlist_show`, `watchlist_lists`
+- `watchlist_scan` — digest view: ranks all coins in a watchlist by TSS on-demand (parallel, up to 8 workers)
+- `alert_set` — set TSS threshold (`tss_above` / `tss_below`) or `regime_change` alerts per symbol
+- `alert_check` — checks all alerts against live TA data, reports which triggered, updates stored baseline for drift tracking
+- DB at `~/.cryptoscholar/watchlist.db`; override with `CRYPTOSCHOLAR_DATA_DIR` env var
 
 ## v0.6.0 — HMM Volatility Regime
 - Replace rule-based regime with 3-state GaussianHMM (hv_20, atr_14, bb_width)

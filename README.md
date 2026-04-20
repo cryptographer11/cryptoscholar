@@ -8,7 +8,7 @@ Ask Claude *"Is SOL set up for a swing trade?"* and it fetches live data from Bi
 
 ## What it does
 
-CryptoScholar exposes 6 MCP tools that Claude can call natively:
+CryptoScholar exposes 13 MCP tools that Claude can call natively:
 
 ### `analyze_coin`
 Full technical analysis snapshot for any coin. Fetches 300 days of real OHLCV candles from Binance (with CoinGecko fallback) and computes:
@@ -57,7 +57,30 @@ Claude reads the live TA data and generates a structured bull/bear debate ground
 - **Bear case** — what could go wrong
 - **Bottom line** — one-sentence synthesis
 
+### Watchlist tools
+Persistent coin lists stored in SQLite (`~/.cryptoscholar/watchlist.db`).
+
+| Tool | What it does |
+|------|-------------|
+| `watchlist_add` | Add symbols to a named list (creates the list if needed) |
+| `watchlist_remove` | Remove symbols; also clears their alerts |
+| `watchlist_show` | Show all symbols + configured alerts for a list |
+| `watchlist_lists` | List all named watchlists with symbol counts |
+| `watchlist_scan` | Run a full TSS analysis on every coin in the list — parallel digest view |
+| `alert_set` | Set a `tss_above`, `tss_below`, or `regime_change` alert on any symbol |
+| `alert_check` | Fetch live TA for all alerted symbols, report which alerts fired, update baseline |
+
 No API key required for market data. Only `ANTHROPIC_API_KEY` is needed for the `debate` tool.
+
+---
+
+## What's new in v0.5.0
+
+- **Persistent watchlists** — `watchlist_add` / `watchlist_remove` / `watchlist_show` / `watchlist_lists` manage named coin lists backed by SQLite (`~/.cryptoscholar/watchlist.db`). Multiple named lists supported.
+- **`watchlist_scan`** — the digest tool. Runs a parallel TSS analysis on every coin in a watchlist and returns them ranked. One call to get a live snapshot of everything you're tracking.
+- **`alert_set`** — attach threshold or regime-change alerts to any symbol. Conditions: `tss_above` (fires when TSS ≥ N), `tss_below` (fires when TSS ≤ N), `regime_change` (fires when volatility regime shifts). Symbol is auto-added to the watchlist.
+- **`alert_check`** — fetches current TA for all alerted symbols in parallel, reports which alerts have triggered with reason and current values, and updates the stored baseline so subsequent checks track drift correctly.
+- **Configurable data directory** — set `CRYPTOSCHOLAR_DATA_DIR` to change where the watchlist DB is stored.
 
 ---
 
@@ -109,6 +132,10 @@ Restart Claude Code. You can now ask:
 - *"What does the macro market look like right now?"*
 - *"Give me the bull and bear case for DOGE based on current TA"*
 - *"How correlated are BTC, ETH, SOL, and AVAX over the last month?"*
+- *"Add BTC, ETH, and SOL to my main watchlist"*
+- *"Set an alert on BTC if TSS drops below 35"*
+- *"Check my alerts"*
+- *"Give me the digest for my main watchlist"*
 
 ---
 
@@ -224,6 +251,7 @@ Restart Claude Code. You can now ask:
 | `ANTHROPIC_API_KEY` | — | Required for the `debate` tool |
 | `CRYPTOSCHOLAR_MODEL` | `claude-haiku-4-5-20251001` | Claude model used for debates (swap for Sonnet/Opus for deeper analysis) |
 | `CRYPTOSCHOLAR_LOG_DIR` | `/tmp` | Directory for rotating log files |
+| `CRYPTOSCHOLAR_DATA_DIR` | `~/.cryptoscholar` | Directory for watchlist SQLite DB |
 
 ---
 
@@ -249,6 +277,7 @@ Claude (MCP call)
          │    ├── rank.py           Runs analyze_coin in parallel, sorts by TSS
          │    ├── top_coins.py      Fetches top N by market cap, delegates to rank_coins
          │    ├── correlate.py      Pairwise Pearson correlation of 30-day returns
+         │    ├── watchlist.py      Watchlist + alert tools (7 tools)
          │    ├── debate.py         Builds prompt from TA data, calls Claude API
          │    └── market_context.py ARS + MRS + macro signals
          ├── ta/
@@ -261,7 +290,8 @@ Claude (MCP call)
               ├── binance.py        Binance klines + funding rate (1,200 req/min, no auth)
               ├── coingecko.py      CoinGecko client, 5-min TTL cache, OHLCV builder
               ├── alternative_me.py Fear & Greed Index (Alternative.me, 1-hr cache)
-              └── defillama.py      DefiLlama stablecoin supply history
+              ├── defillama.py      DefiLlama stablecoin supply history
+              └── watchlist_db.py   SQLite watchlist + alert persistence (~/.cryptoscholar/)
 ```
 
 **Data flow for `analyze_coin("SOL")`:**
@@ -297,7 +327,7 @@ make coverage        # coverage report
 make lint-security   # bandit security scan
 ```
 
-**143 tests, 0 failures.**
+**183 tests, 0 failures.**
 
 ---
 
@@ -307,7 +337,7 @@ See [ROADMAP.md](ROADMAP.md) for planned versions. Highlights:
 
 - **v0.3** ✅ — Multi-timeframe (4H), RSI divergence, `top_coins` tool, parallel batch ranking
 - **v0.4** ✅ — OBV confirmation, funding rates, Fear & Greed, smart filtering, `correlate_coins`
-- **v0.5** — Persistent watchlist + Claude-triggered regime-change and TSS threshold alerts
+- **v0.5** ✅ — Persistent watchlist (SQLite), `watchlist_scan` digest, TSS + regime-change alerts
 - **v0.6** — HMM volatility regime (3-state GaussianHMM replacing rule-based classifier)
 - **v0.7** — `generate_report` tool: cluster → write → assemble pipeline for formatted markdown reports
 - **v0.8** — `research_coin` tool: web search + Jina reader for news and narrative context
