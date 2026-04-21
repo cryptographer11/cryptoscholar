@@ -35,11 +35,13 @@
 - `alert_check` — checks all alerts against live TA data, reports which triggered, updates stored baseline for drift tracking
 - DB at `~/.cryptoscholar/watchlist.db`; override with `CRYPTOSCHOLAR_DATA_DIR` env var
 
-## v0.6.0 — HMM Volatility Regime
-- Replace rule-based regime with 3-state GaussianHMM (hv_20, atr_14, bb_width)
-- Auto-retrain every 7 days on accumulated price history
-- Persist trained model to ~/.cryptoscholar/hmm_model.pkl
-- `train_regime_model` tool for manual retrain
+## v0.6.0 (released) — HMM Volatility Regime
+- 3-state GaussianHMM trained on hv_20, normalised ATR-14, and BB width — replaces percentile rule-based classifier
+- Auto-retrains every 7 days on first `analyze_coin` / `rank_coins` call after threshold
+- Model persisted to `~/.cryptoscholar/hmm_model.pkl`; survives server restarts
+- Rule-based classifier retained as silent fallback (no model or prediction failure)
+- `regime_source` field added to `analyze_coin` output (`"hmm"` or `"rule_based"`)
+- `train_regime_model` tool (14th tool) for manual retrain with optional `force` flag
 
 ## v0.7.0 — Analysis Report Generation
 - `generate_report` tool: 3-stage Cluster → Write → Assemble pipeline

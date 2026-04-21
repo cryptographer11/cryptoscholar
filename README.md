@@ -8,7 +8,7 @@ Ask Claude *"Is SOL set up for a swing trade?"* and it fetches live data from Bi
 
 ## What it does
 
-CryptoScholar exposes 13 MCP tools that Claude can call natively:
+CryptoScholar exposes 14 MCP tools that Claude can call natively:
 
 ### `analyze_coin`
 Full technical analysis snapshot for any coin. Fetches 300 days of real OHLCV candles from Binance (with CoinGecko fallback) and computes:
@@ -23,7 +23,7 @@ Full technical analysis snapshot for any coin. Fetches 300 days of real OHLCV ca
 | **RSI Divergence** | Bullish / bearish / none — price vs RSI extremes over last 30 bars |
 | **OBV Trend** | On-Balance Volume direction (rising / falling / flat) — ±2 TSS confirmation bonus |
 | **Funding Rate** | Current USDT-M perpetual funding rate — positive extremes = over-leveraged longs |
-| **Regime** | Low / mid / high volatility classification |
+| **Regime** | Low / mid / high volatility — classified by 3-state GaussianHMM (falls back to rule-based) |
 | **TSS** | Trend Strength Score — 0–100 composite (40% trend + 30% momentum + 30% RS ± MTF ± OBV) |
 
 ### `rank_coins`
@@ -70,7 +70,21 @@ Persistent coin lists stored in SQLite (`~/.cryptoscholar/watchlist.db`).
 | `alert_set` | Set a `tss_above`, `tss_below`, or `regime_change` alert on any symbol |
 | `alert_check` | Fetch live TA for all alerted symbols, report which alerts fired, update baseline |
 
+### `train_regime_model`
+Manually trigger a retrain of the HMM volatility regime model on fresh BTC price history. The model auto-retrains every 7 days automatically — use this after a major market structure shift to force an immediate update. Accepts an optional `force=True` flag to bypass the 7-day cooldown.
+
 No API key required for market data. Only `ANTHROPIC_API_KEY` is needed for the `debate` tool.
+
+---
+
+## What's new in v0.6.0
+
+- **GaussianHMM regime classification** — volatility regime is now classified by a 3-state Hidden Markov Model trained on three features: 20-day historical volatility (hv_20), normalised ATR-14, and Bollinger Band width. The model learns what low/mid/high volatility looks like in feature space rather than applying fixed percentile thresholds.
+- **Auto-retrains every 7 days** — on the first `analyze_coin` or `rank_coins` call after the threshold, the model retrains on BTC price history without any manual intervention.
+- **Rule-based fallback** — if no model exists yet, or if the HMM prediction fails for any reason, the original ATR + BBW percentile classifier is used silently.
+- **`regime_source` field** — `analyze_coin` now returns `regime_source: "hmm"` or `"rule_based"` so you can see which classifier was used.
+- **`train_regime_model` tool** — force a manual retrain at any time (e.g. after a major market structure shift). Use `force=True` to bypass the 7-day cooldown.
+- **Model persisted to disk** — trained model stored at `~/.cryptoscholar/hmm_model.pkl`; survives server restarts.
 
 ---
 
@@ -195,6 +209,7 @@ Restart Claude Code. You can now ask:
   "price": 142.30,
   "tss": 79.2,
   "regime": "mid_vol",
+  "regime_source": "hmm",
   "vrs": 55,
   "ema_alignment": "full_bull",
   "mtf_alignment_4h": "bullish",
@@ -283,7 +298,8 @@ Claude (MCP call)
          ├── ta/
          │    ├── indicators.py     pandas-ta + custom HV / RS / OBV functions
          │    ├── scoring.py        TSS: trend + momentum + RS ± MTF ± OBV bonuses
-         │    └── regime.py         Rule-based vol regime (ATR + BBW percentile)
+         │    ├── regime.py         HMM-first regime classifier with rule-based fallback
+         │    └── hmm_regime.py     GaussianHMM train / persist / classify / auto-retrain
          ├── market/
          │    └── context.py        BTC dominance, ETH/BTC, TOTAL3, F&G, ARS, MRS
          └── data/
@@ -303,7 +319,7 @@ Claude (MCP call)
 6. Compute OBV trend (EMA-10 of OBV slope over last 5 bars)
 7. Compute 4H indicators (EMA-20/50) and derive MTF alignment bonus (±3 TSS pts)
 8. Detect RSI divergence over last 30 bars (bullish/bearish/none)
-9. Classify regime (ATR + BB width percentile position vs historical range)
+9. Classify regime via GaussianHMM (hv_20 + normalised ATR + BBW); falls back to rule-based if no model
 10. Compute TSS (weighted composite of trend, momentum, RS vs BTC ± MTF bonus ± OBV bonus)
 11. Fetch current market data (price, market cap, 24h change) from CoinGecko
 12. Return structured dict to Claude
@@ -327,7 +343,7 @@ make coverage        # coverage report
 make lint-security   # bandit security scan
 ```
 
-**183 tests, 0 failures.**
+**205 tests, 0 failures.**
 
 ---
 
@@ -338,7 +354,7 @@ See [ROADMAP.md](ROADMAP.md) for planned versions. Highlights:
 - **v0.3** ✅ — Multi-timeframe (4H), RSI divergence, `top_coins` tool, parallel batch ranking
 - **v0.4** ✅ — OBV confirmation, funding rates, Fear & Greed, smart filtering, `correlate_coins`
 - **v0.5** ✅ — Persistent watchlist (SQLite), `watchlist_scan` digest, TSS + regime-change alerts
-- **v0.6** — HMM volatility regime (3-state GaussianHMM replacing rule-based classifier)
+- **v0.6** ✅ — HMM volatility regime (3-state GaussianHMM, auto-retrain, rule-based fallback, `train_regime_model` tool)
 - **v0.7** — `generate_report` tool: cluster → write → assemble pipeline for formatted markdown reports
 - **v0.8** — `research_coin` tool: web search + Jina reader for news and narrative context
 
