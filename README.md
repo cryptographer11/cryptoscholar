@@ -88,26 +88,6 @@ No API key required for market data. Only `ANTHROPIC_API_KEY` is needed for the 
 
 ---
 
-## What's new in v0.5.0
-
-- **Persistent watchlists** — `watchlist_add` / `watchlist_remove` / `watchlist_show` / `watchlist_lists` manage named coin lists backed by SQLite (`~/.cryptoscholar/watchlist.db`). Multiple named lists supported.
-- **`watchlist_scan`** — the digest tool. Runs a parallel TSS analysis on every coin in a watchlist and returns them ranked. One call to get a live snapshot of everything you're tracking.
-- **`alert_set`** — attach threshold or regime-change alerts to any symbol. Conditions: `tss_above` (fires when TSS ≥ N), `tss_below` (fires when TSS ≤ N), `regime_change` (fires when volatility regime shifts). Symbol is auto-added to the watchlist.
-- **`alert_check`** — fetches current TA for all alerted symbols in parallel, reports which alerts have triggered with reason and current values, and updates the stored baseline so subsequent checks track drift correctly.
-- **Configurable data directory** — set `CRYPTOSCHOLAR_DATA_DIR` to change where the watchlist DB is stored.
-
----
-
-## What's new in v0.4.0
-
-- **OBV volume confirmation** — On-Balance Volume trend (`rising` / `falling` / `flat`) is now computed for every coin. A rising OBV confirming an uptrend adds +2 to TSS; diverging volume subtracts 2. Exposed in `analyze_coin` and `rank_coins`.
-- **Funding rates** — `analyze_coin` now fetches the current USDT-M perpetual funding rate from Binance Futures. Positive extremes signal over-leveraged longs (bearish lean); deeply negative rates signal a crowded short (contrarian bullish). Returns `null` for coins with no perpetual.
-- **Fear & Greed Index** — `market_context` now includes the Alternative.me Fear & Greed Index (`fear_greed_value` 0–100 and `fear_greed_label`). Extreme fear (<20) adds +5 to MRS; extreme greed (>80) subtracts 5. No API key required.
-- **Smart `top_coins` filtering** — beyond stablecoin exclusion, `top_coins` now also filters wrapped tokens (WBTC, WETH, stETH, cbBTC, and 11 others) and coins with < $10M daily volume. Cleaner, more actionable rankings.
-- **`correlate_coins` tool** — new sixth tool. Pass 2–20 symbols and get back a full pairwise Pearson correlation matrix of 30-day daily returns, plus pre-computed high-correlation clusters and uncorrelated pairs for quick diversification checks.
-
----
-
 ## Quick start
 
 **Requirements:** Python 3.11+
