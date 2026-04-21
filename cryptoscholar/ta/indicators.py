@@ -285,6 +285,14 @@ def compute_indicators(
     # --- Historical Volatility 20-day ---
     hv = calc_historical_volatility(close, period=20)
     result["hv_20"] = _last(hv)
+    result["_hv_series"] = hv.dropna().tolist() if hv is not None else []
+
+    # ATR as % of price — normalised for HMM features (comparable across price levels)
+    if atr is not None:
+        atr_pct = (atr / close) * 100
+        result["_atr_pct_series"] = atr_pct.dropna().tolist()
+    else:
+        result["_atr_pct_series"] = []
 
     # --- Relative strength vs BTC ---
     if btc_close is not None:

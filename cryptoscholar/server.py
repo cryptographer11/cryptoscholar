@@ -32,6 +32,7 @@ from cryptoscholar.tools.debate import debate as _debate
 from cryptoscholar.tools.market_context import market_context as _market_context
 from cryptoscholar.tools.rank import rank_coins as _rank_coins
 from cryptoscholar.tools.top_coins import top_coins as _top_coins
+from cryptoscholar.tools.train_regime import train_regime_model as _train_regime_model
 from cryptoscholar.tools.watchlist import (
     alert_check as _alert_check,
     alert_set as _alert_set,
@@ -205,9 +206,29 @@ def alert_check(list_name: str = "default") -> dict:
     return _alert_check(list_name)
 
 
+@mcp.tool()
+def train_regime_model(force: bool = False) -> dict:
+    """Train (or retrain) the HMM volatility regime model on BTC price history.
+
+    The model classifies market volatility into 3 states (low_vol / mid_vol /
+    high_vol) using GaussianHMM trained on three features: historical volatility
+    (hv_20), normalised ATR-14, and Bollinger Band width.
+
+    The model is persisted to ~/.cryptoscholar/hmm_model.pkl and auto-retrains
+    every 7 days when analyze_coin or rank_coins is called. Use this tool to
+    trigger a manual retrain (e.g. after a major market structure shift).
+
+    Parameters
+    ----------
+    force : bool
+        If True, retrain even if the model was trained less than 7 days ago.
+    """
+    return _train_regime_model(force)
+
+
 def main() -> None:
     """Run the MCP server."""
-    logger.info("Starting CryptoScholar MCP server v0.5.0")
+    logger.info("Starting CryptoScholar MCP server v0.6.0")
     mcp.run()
 
 

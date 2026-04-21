@@ -10,7 +10,7 @@ from cryptoscholar.data.coingecko import (
     resolve_symbol,
 )
 from cryptoscholar.ta.indicators import compute_4h_indicators, compute_indicators
-from cryptoscholar.ta.regime import classify_regime, compute_vrs
+from cryptoscholar.ta.regime import classify_regime_full, compute_vrs
 from cryptoscholar.ta.scoring import compute_4h_alignment_bonus, compute_tss
 
 logger = logging.getLogger(__name__)
@@ -100,7 +100,7 @@ def analyze_coin(symbol: str, btc_df=None) -> dict:
         logger.debug("Funding rate fetch failed for %s: %s", symbol, exc)
 
     # Regime
-    regime = classify_regime(indicators)
+    regime, regime_source = classify_regime_full(indicators)
     vrs = compute_vrs(regime)
 
     # TSS with optional MTF bonus
@@ -143,6 +143,7 @@ def analyze_coin(symbol: str, btc_df=None) -> dict:
         "price_change_24h_pct": price_change_24h,
         "tss": tss,
         "regime": regime,
+        "regime_source": regime_source,
         "vrs": vrs,
         "ema_alignment": ema_alignment,
         "mtf_alignment_4h": mtf_alignment_4h,
