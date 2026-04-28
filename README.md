@@ -331,10 +331,6 @@ make lint-security   # bandit security scan
 
 See [ROADMAP.md](ROADMAP.md) for planned versions. Highlights:
 
-- **v0.3** ✅ — Multi-timeframe (4H), RSI divergence, `top_coins` tool, parallel batch ranking
-- **v0.4** ✅ — OBV confirmation, funding rates, Fear & Greed, smart filtering, `correlate_coins`
-- **v0.5** ✅ — Persistent watchlist (SQLite), `watchlist_scan` digest, TSS + regime-change alerts
-- **v0.6** ✅ — HMM volatility regime (3-state GaussianHMM, auto-retrain, rule-based fallback, `train_regime_model` tool)
 - **v0.7** — `generate_report` tool: cluster → write → assemble pipeline for formatted markdown reports
 - **v0.8** — `research_coin` tool: web search + Jina reader for news and narrative context
 - **v0.9** — Market structure classification (HH/HL/LH/LL) via swing point detection; new `market_structure` field in `analyze_coin`
