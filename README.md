@@ -337,6 +337,13 @@ See [ROADMAP.md](ROADMAP.md) for planned versions. Highlights:
 - **v0.6** ✅ — HMM volatility regime (3-state GaussianHMM, auto-retrain, rule-based fallback, `train_regime_model` tool)
 - **v0.7** — `generate_report` tool: cluster → write → assemble pipeline for formatted markdown reports
 - **v0.8** — `research_coin` tool: web search + Jina reader for news and narrative context
+- **v0.9** — Market structure classification (HH/HL/LH/LL) via swing point detection; new `market_structure` field in `analyze_coin`
+- **v1.0** — Support & resistance zones clustered from swing pivots; `support_zones` + `resistance_zones` in `analyze_coin`
+- **v1.1** — Setup confluence score (1–5) measuring signal alignment; surfaces in `analyze_coin`, `rank_coins`, `watchlist_scan`
+- **v1.2** — Trade plan block: `entry_zone`, `take_profit`, `stop_loss`, `risk_reward_ratio` computed from S/R zones + ATR
+- **v1.3** — Pi Cycle indicator in `market_context`; `brief` tool: Claude Haiku one-paragraph setup summary
+- **v1.4** — EV filter: `ev_score` + `ev_signal` flags negative-EV setups before acting on a trade plan
+- **v1.5** — `backtest_strategy` tool: walk-forward simulation, fee-adjusted R, win rate, max drawdown
 
 ---
 

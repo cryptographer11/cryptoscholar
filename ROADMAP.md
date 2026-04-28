@@ -57,3 +57,51 @@
 - Smart search cache: skip redundant searches when recent results are still relevant
 - Integrate research context into `analyze_coin` and `debate` outputs
 - Local result store (SQLite) for deduplication and re-use within session
+
+## v0.9.0 — Market Structure Classification
+One new field in `analyze_coin`. No new tools, no UI.
+
+- **Swing point detection** — identify pivot highs/lows from daily OHLCV (configurable lookback, default 5-bar each side)
+- **Market structure** — classify as `"uptrend"` (HH+HL), `"downtrend"` (LH+LL), or `"ranging"`; added as `market_structure` field alongside `ema_alignment`
+- Swing-based classification is less lag-sensitive than EMAs; provides independent structural confirmation
+
+## v1.0.0 — Support & Resistance Zones
+Depends on v0.9.0 swing points.
+
+- **S/R zone clustering** — group swing pivots within ATR proximity into named zones; output `support_zones` and `resistance_zones` lists (each: `{"price": float, "strength": int}`) in `analyze_coin`
+- `strength` = number of touches; zones with 3+ touches flagged as key levels
+
+## v1.1.0 — Setup Confluence Score
+One new integer field. Depends on v0.9.0 + v1.0.0 output being present.
+
+- **`setup_score`** (1–5) — counts how many signals align: EMA alignment, MTF, OBV trend, RSI divergence, market structure, S/R proximity; added to `analyze_coin` and `rank_coins` output
+- Complements TSS (trend strength) — setup_score measures trade *readiness*, TSS measures trend *quality*
+- Also surfaced in `watchlist_scan` digest
+
+## v1.2.0 — Trade Plan Block
+Depends on v1.0.0 S/R zones + ATR already being computed.
+
+- **`trade_plan`** dict added to `analyze_coin` output: `entry_zone`, `take_profit`, `stop_loss`, `risk_reward_ratio`
+- Entry = nearest S/R zone on the trend side; TP = next S/R zone beyond; SL = ATR-1.5× beyond entry zone
+- Returns `null` when market structure is `"ranging"` or S/R data is insufficient
+
+## v1.3.0 — Pi Cycle & LLM Brief
+Two independent additions; small enough to ship together.
+
+- **Pi Cycle indicator** — 111-day EMA vs 2×350-day EMA; historically signals BTC macro tops; added to `market_context` as `pi_cycle_signal` (`"neutral"` / `"approaching"` / `"crossed"`)
+- **`brief` tool** — single-call Claude Haiku summary of a coin's setup (one paragraph, trade-plan focused); lighter than `debate`; uses `analyze_coin` data as input; no extra API calls
+
+## v1.4.0 — EV Filter
+Depends on v1.2.0 trade plan block.
+
+- **Expected value gate** — `ev = setup_score × estimated_R / risk_R`; added as `ev_score` float to `analyze_coin` output
+- Negative EV flagged as `ev_signal: "avoid"`; positive EV as `"valid"`
+- Requires `trade_plan` block to be non-null; otherwise `ev_score: null`
+
+## v1.5.0 — Walk-Forward Backtesting
+Most complex feature. Standalone new tool.
+
+- **`backtest_strategy` tool** — walk-forward simulation on historical OHLCV; entry signal = TSS > threshold + setup_score ≥ N; resolves TP/SL on subsequent candles
+- Fee model: configurable round-trip (default 0.1%)
+- Returns: per-trade log, win rate, avg fee-adjusted R, max drawdown; no UI — structured dict output only
+- Accepts any symbol with ≥180 days of history
