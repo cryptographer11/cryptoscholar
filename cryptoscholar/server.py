@@ -32,6 +32,7 @@ from cryptoscholar.tools.debate import debate as _debate
 from cryptoscholar.tools.market_context import market_context as _market_context
 from cryptoscholar.tools.rank import rank_coins as _rank_coins
 from cryptoscholar.tools.top_coins import top_coins as _top_coins
+from cryptoscholar.tools.report import generate_report as _generate_report
 from cryptoscholar.tools.train_regime import train_regime_model as _train_regime_model
 from cryptoscholar.tools.watchlist import (
     alert_check as _alert_check,
@@ -226,9 +227,32 @@ def train_regime_model(force: bool = False) -> dict:
     return _train_regime_model(force)
 
 
+@mcp.tool()
+def generate_report(symbols: list[str], output_format: str = "markdown") -> dict:
+    """Generate a structured analysis report for one or more cryptocurrencies.
+
+    3-stage pipeline: Cluster → Write → Assemble.
+    Stage 1 clusters TA signals into thematic groups (trend, momentum, volume,
+    volatility, relative strength). Stage 2 uses Claude to write narrative
+    sections for each group. Stage 3 assembles a formatted markdown report
+    with a key statistics table at the top.
+
+    Supports single-coin deep-dives and multi-coin comparison reports
+    (e.g. ["BTC", "ETH", "SOL"]). Up to 10 symbols per call.
+
+    Parameters
+    ----------
+    symbols       : list of ticker symbols e.g. ["BTC"] or ["BTC", "ETH", "SOL"]
+    output_format : "markdown" (default) or "json"
+
+    Requires ANTHROPIC_API_KEY to be set.
+    """
+    return _generate_report(symbols, output_format)
+
+
 def main() -> None:
     """Run the MCP server."""
-    logger.info("Starting CryptoScholar MCP server v0.6.0")
+    logger.info("Starting CryptoScholar MCP server v0.7.0")
     mcp.run()
 
 

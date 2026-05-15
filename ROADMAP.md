@@ -28,7 +28,7 @@
 - **Smart `top_coins` filtering** — Beyond stablecoin exclusion: filter wrapped tokens (WBTC, WETH, stETH, cbBTC), low-liquidity coins (24h volume < threshold), and coins with <30 days of OHLCV history (insufficient for TSS)
 - **Correlation tool** — `correlate_coins` tool: given a list of symbols, returns a pairwise Pearson correlation matrix of 30-day daily returns; highlights high-correlation clusters (>0.85) and uncorrelated pairs (<0.3)
 
-## v0.5.0 (current) — Watchlist + Alerts
+## v0.5.0 (released) — Watchlist + Alerts
 - Persistent watchlist (SQLite) with named lists — `watchlist_add`, `watchlist_remove`, `watchlist_show`, `watchlist_lists`
 - `watchlist_scan` — digest view: ranks all coins in a watchlist by TSS on-demand (parallel, up to 8 workers)
 - `alert_set` — set TSS threshold (`tss_above` / `tss_below`) or `regime_change` alerts per symbol
@@ -43,7 +43,7 @@
 - `regime_source` field added to `analyze_coin` output (`"hmm"` or `"rule_based"`)
 - `train_regime_model` tool (14th tool) for manual retrain with optional `force` flag
 
-## v0.7.0 — Analysis Report Generation
+## v0.7.0 (released) — Analysis Report Generation
 - `generate_report` tool: 3-stage Cluster → Write → Assemble pipeline
 - Stage 1: cluster related signals/indicators into thematic groups per coin
 - Stage 2: write structured sections (trend, momentum, on-chain context, risks)
