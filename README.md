@@ -8,7 +8,7 @@ Ask Claude *"Is SOL set up for a swing trade?"* and it fetches live data from Bi
 
 ## What it does
 
-CryptoScholar exposes 14 MCP tools that Claude can call natively:
+CryptoScholar exposes 15 MCP tools that Claude can call natively:
 
 ### `analyze_coin`
 Full technical analysis snapshot for any coin. Fetches 300 days of real OHLCV candles from Binance (with CoinGecko fallback) and computes:
@@ -73,18 +73,24 @@ Persistent coin lists stored in SQLite (`~/.cryptoscholar/watchlist.db`).
 ### `train_regime_model`
 Manually trigger a retrain of the HMM volatility regime model on fresh BTC price history. The model auto-retrains every 7 days automatically — use this after a major market structure shift to force an immediate update. Accepts an optional `force=True` flag to bypass the 7-day cooldown.
 
-No API key required for market data. Only `ANTHROPIC_API_KEY` is needed for the `debate` tool.
+### `generate_report`
+Generate a structured analysis report for one or more coins. Uses a 3-stage pipeline:
+1. **Cluster** — groups TA signals into thematic sections (trend, momentum, volume/on-chain, volatility, relative strength)
+2. **Write** — Claude writes a narrative paragraph for each section based on the clustered signals
+3. **Assemble** — combines sections into a formatted markdown report with a key statistics table at the top
+
+Supports single-coin deep-dives and multi-coin comparison reports (e.g. `["BTC", "ETH", "SOL"]`). Pass `output_format="json"` for structured output instead of markdown. Up to 10 symbols per call.
+
+No API key required for market data. `ANTHROPIC_API_KEY` is needed for the `debate` and `generate_report` tools.
 
 ---
 
-## What's new in v0.6.0
+## What's new in v0.7.0
 
-- **GaussianHMM regime classification** — volatility regime is now classified by a 3-state Hidden Markov Model trained on three features: 20-day historical volatility (hv_20), normalised ATR-14, and Bollinger Band width. The model learns what low/mid/high volatility looks like in feature space rather than applying fixed percentile thresholds.
-- **Auto-retrains every 7 days** — on the first `analyze_coin` or `rank_coins` call after the threshold, the model retrains on BTC price history without any manual intervention.
-- **Rule-based fallback** — if no model exists yet, or if the HMM prediction fails for any reason, the original ATR + BBW percentile classifier is used silently.
-- **`regime_source` field** — `analyze_coin` now returns `regime_source: "hmm"` or `"rule_based"` so you can see which classifier was used.
-- **`train_regime_model` tool** — force a manual retrain at any time (e.g. after a major market structure shift). Use `force=True` to bypass the 7-day cooldown.
-- **Model persisted to disk** — trained model stored at `~/.cryptoscholar/hmm_model.pkl`; survives server restarts.
+- **`generate_report` tool (tool #15)** — 3-stage Cluster → Write → Assemble pipeline that produces a formatted markdown report for any coin or list of coins. Stage 1 groups TA signals into thematic clusters; Stage 2 uses Claude to write narrative sections; Stage 3 assembles a report with a key statistics table.
+- **Multi-coin comparison** — pass up to 10 symbols and get a comparative report with per-coin summaries, a strongest/weakest setup call, and an overall comparative summary.
+- **JSON output option** — pass `output_format="json"` to get the full structured report dict instead of markdown, useful for downstream processing.
+- **Parallel analysis** — coin data for multi-symbol reports is fetched in parallel (up to 8 workers) before the Claude write stage.
 
 ---
 
@@ -323,7 +329,7 @@ make coverage        # coverage report
 make lint-security   # bandit security scan
 ```
 
-**205 tests, 0 failures.**
+**222 tests, 0 failures.**
 
 ---
 
@@ -331,7 +337,6 @@ make lint-security   # bandit security scan
 
 See [ROADMAP.md](ROADMAP.md) for planned versions. Highlights:
 
-- **v0.7** — `generate_report` tool: cluster → write → assemble pipeline for formatted markdown reports
 - **v0.8** — `research_coin` tool: web search + Jina reader for news and narrative context
 - **v0.9** — Market structure classification (HH/HL/LH/LL) via swing point detection; new `market_structure` field in `analyze_coin`
 - **v1.0** — Support & resistance zones clustered from swing pivots; `support_zones` + `resistance_zones` in `analyze_coin`
