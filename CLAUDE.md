@@ -6,7 +6,7 @@ Path: `/root/projects/cryptoscholar` | GitHub: `github.com/cryptographer11/crypt
 Registered in `~/.claude.json` mcpServers.
 
 ## Stack
-Python 3.11 · FastMCP · pandas-ta · httpx · SQLite (watchlist) · pytest (183 tests)
+Python 3.11 · FastMCP · pandas-ta · httpx · SQLite (watchlist) · pytest (230 tests)
 
 ## Key File Paths
 | File | Purpose |
@@ -35,7 +35,7 @@ Python 3.11 · FastMCP · pandas-ta · httpx · SQLite (watchlist) · pytest (18
 - Binance primary, CoinGecko fallback for OHLCV; CoinGecko for non-OHLCV market_context
 - EMA-200 needs 250+ days — CoinGecko fetches 250, Binance fetches 300
 - TSS bonuses are additive post-base (MTF ±3, OBV ±2), clamped 0–100
-- `debate` calls Claude API only — no other providers
+- `debate` routes through the self-hosted OmniRoute gateway (`OMNIROUTE_API_KEY`), not a direct provider SDK — see Recent Changes 2026-07-29
 - `alert_check` uses `rank_coins` (parallel) not individual `analyze_coin` calls
 - SQLite `:memory:` creates isolated DBs per connection — tests use `tmp_path` fixture
 - GitHub fine-grained PAT can't open PRs on third-party repos — use classic PAT
@@ -62,22 +62,11 @@ Python 3.11 · FastMCP · pandas-ta · httpx · SQLite (watchlist) · pytest (18
 
 ## Recent Changes
 
-### 2026-04-21 MYT — v0.6.0 HMM Regime
-- `cryptoscholar/ta/hmm_regime.py` (new): GaussianHMM 3-state model, train/persist/classify/retrain
-- `cryptoscholar/ta/regime.py`: HMM-first with rule-based fallback; `classify_regime_full()` added
-- `cryptoscholar/ta/indicators.py`: `_hv_series` and `_atr_pct_series` added to indicators dict
-- `cryptoscholar/tools/train_regime.py` (new): `train_regime_model` MCP tool
-- `analyze_coin` output gains `regime_source` field ('hmm' or 'rule_based')
-- `hmmlearn>=0.3.0` + `scikit-learn>=1.4.0` added to dependencies
-- 205 tests passing (22 new)
+### 2026-07-29 MYT — debate tool migrated to OmniRoute
+- `cryptoscholar/tools/debate.py`: replaced direct `anthropic.Anthropic()` SDK call with `httpx.post()` to the self-hosted OmniRoute gateway (`http://localhost:20128/v1/chat/completions`, OpenAI-compatible). This tool was completely non-functional before — no `ANTHROPIC_API_KEY` had ever been configured for this project.
+- New env var `OMNIROUTE_API_KEY` (was `ANTHROPIC_API_KEY`); new `/root/secrets/cryptoscholar.env` + `.env` symlink (first secret this project has).
+- Default model `auto/smart` (was `claude-haiku-4-5-20251001` hardcoded); `max_tokens` 512 → 2048 after live testing showed a reasoning model's hidden reasoning tokens were exhausting the budget before the JSON finished (`finish_reason: "length"`, JSON truncated mid-string).
+- Added markdown-code-fence stripping before `json.loads` — live testing showed `auto/smart` wraps its JSON answer in ` ```json ` despite the system prompt saying not to.
+- 8 new tests in `tests/test_debate.py` (no test existed for this tool before). Full suite 230/230 passing.
+- Verified live end-to-end for BTC and ETH.
 
-### 2026-04-20 MYT
-- v0.5.0: watchlist_db.py (SQLite CRUD), watchlist.py (7 tools), 40 new tests → 183 total
-- `alert_check` runs rank_coins in parallel on alerted symbols, updates last_tss/last_regime baseline
-- SQLite `:memory:` gotcha: each `_connect()` opens isolated DB — test fixture must use tmp_path file
-
-### 2026-04-20 MYT (earlier)
-- v0.4.0: OBV trend (±2 TSS), funding rate via Binance fapi, Fear & Greed (Alternative.me, ±5 MRS)
-- Smart top_coins filtering: _WRAPPED_TOKENS frozenset + _MIN_VOLUME_USD=$10M
-- correlate_coins tool: Pearson matrix, high-corr clusters (>0.85), uncorrelated pairs (<0.30)
-- ROADMAP updated: v0.5→v0.8 shifted, v0.4 = Signal Depth & Breadth

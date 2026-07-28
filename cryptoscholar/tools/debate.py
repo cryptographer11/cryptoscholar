@@ -1,13 +1,16 @@
-"""debate tool — Claude AI bull/bear synthesis for a cryptocurrency."""
+"""debate tool — LLM bull/bear synthesis for a cryptocurrency, via OmniRoute."""
 
 import json
 import logging
 import os
 from typing import Optional
 
+import httpx
+
 logger = logging.getLogger(__name__)
 
-_DEFAULT_MODEL = "claude-haiku-4-5-20251001"
+_DEFAULT_MODEL = "auto/smart"
+_OMNIROUTE_URL = "http://localhost:20128/v1/chat/completions"
 
 _SYSTEM_PROMPT = """\
 You are a professional crypto market analyst. Given technical analysis data for a cryptocurrency, generate a concise structured bull/bear debate.
@@ -56,7 +59,7 @@ def _fmt(val: Optional[float], decimals: int = 2) -> str:
 
 def debate(symbol: str) -> dict:
     """
-    Generate a Claude AI bull/bear debate for a cryptocurrency.
+    Generate an LLM bull/bear debate for a cryptocurrency, routed through OmniRoute.
 
     Parameters
     ----------
@@ -68,13 +71,12 @@ def debate(symbol: str) -> dict:
     Dict with keys: symbol, bull_case, bear_case, bottom_line, tss, regime.
     On error returns dict with "error" key.
     """
-    api_key: Optional[str] = os.environ.get("ANTHROPIC_API_KEY")
+    api_key: Optional[str] = os.environ.get("OMNIROUTE_API_KEY")
     if not api_key:
-        return {"error": "ANTHROPIC_API_KEY not configured"}
+        return {"error": "OMNIROUTE_API_KEY not configured"}
 
     model = os.environ.get("CRYPTOSCHOLAR_MODEL", _DEFAULT_MODEL)
 
-    # Import here to avoid hard dependency at module load time
     from cryptoscholar.tools.analyze import analyze_coin
 
     try:
@@ -85,22 +87,36 @@ def debate(symbol: str) -> dict:
     user_message = _format_ta_message(analysis)
 
     try:
-        import anthropic
-
-        client = anthropic.Anthropic(api_key=api_key)
-        response = client.messages.create(
-            model=model,
-            max_tokens=512,
-            system=_SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user_message}],
+        response = httpx.post(
+            _OMNIROUTE_URL,
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={
+                "model": model,
+                # Some auto-routed models spend a large share of the budget on hidden
+                # reasoning before emitting the actual JSON — 512 wasn't enough in
+                # live testing (finish_reason="length" with the JSON truncated mid-string).
+                "max_tokens": 2048,
+                "stream": False,
+                "messages": [
+                    {"role": "system", "content": _SYSTEM_PROMPT},
+                    {"role": "user", "content": user_message},
+                ],
+            },
+            timeout=30.0,
         )
-        raw_text = response.content[0].text.strip()
+        response.raise_for_status()
+        raw_text = response.json()["choices"][0]["message"]["content"].strip()
 
-        # Parse JSON response
+        # Some models wrap JSON in a markdown code fence despite instructions — strip it
+        if raw_text.startswith("```"):
+            raw_text = raw_text.strip("`")
+            if raw_text.startswith("json"):
+                raw_text = raw_text[4:].strip()
+
         debate_result = json.loads(raw_text)
     except json.JSONDecodeError as exc:
-        logger.error("Claude returned invalid JSON for debate on %s: %s", symbol, exc)
-        return {"error": f"Claude returned invalid JSON: {exc}"}
+        logger.error("OmniRoute returned invalid JSON for debate on %s: %s", symbol, exc)
+        return {"error": f"OmniRoute returned invalid JSON: {exc}"}
     except Exception as exc:
         logger.error("Debate generation failed for %s: %s", symbol, exc)
         return {"error": f"Debate generation failed: {exc}"}

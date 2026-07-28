@@ -1,7 +1,8 @@
 # CryptoScholar — Task Board
 
 ## In Progress
-<!-- nothing -->
+### v0.7.0 — Analysis Report Generation
+- [~]  tool: 3-stage Cluster → Write → Assemble pipeline
 
 ## Backlog
 
@@ -24,6 +25,14 @@
 - [ ] Publish to PyPI as `cryptoscholar`
 
 ## Done
+
+### debate tool — migrated to OmniRoute (2026-07-29)
+- [x] `debate` no longer calls Anthropic directly — routes through the self-hosted OmniRoute gateway (`http://localhost:20128`), which was completely broken before (no `ANTHROPIC_API_KEY` was ever configured for this project)
+- [x] New `/root/secrets/cryptoscholar.env` (first secret this project has) + `.env` symlink, scoped `OMNIROUTE_API_KEY`
+- [x] Default model `auto/smart`; `max_tokens` raised 512 → 2048 after live testing showed reasoning-model overhead was truncating the JSON output (`finish_reason: "length"`)
+- [x] Markdown-code-fence stripping added — the live model wraps JSON in ` ```json ` despite instructions not to
+- [x] 8 new tests in `tests/test_debate.py` (none existed before) — 230/230 passing full suite
+- [x] Verified live end-to-end for BTC and ETH — real bull/bear JSON returned
 
 ### v0.6.0 — HMM Volatility Regime (2026-04-21)
 - [x] 3-state GaussianHMM trained on hv_20, normalised ATR-14, and BB width features
