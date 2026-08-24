@@ -11,3 +11,11 @@ build/
 htmlcov/
 .pytest_cache/
 *.pkl
+
+# Tool caches / local state (regenerable, not source) — same set the other
+# projects on this VPS ignore. Added 2026-08-25; these had been surfacing as
+# untracked on every status.
+.claude/
+.serena/
+.token-savior-cache.json
+
