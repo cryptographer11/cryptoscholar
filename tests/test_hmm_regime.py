@@ -3,12 +3,15 @@
 import json
 import pickle
 import tempfile
+import threading
+import time
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
 
+from cryptoscholar.ta import hmm_regime
 from cryptoscholar.ta.hmm_regime import (
     _build_feature_matrix,
     _data_dir,
@@ -265,3 +268,87 @@ def test_compute_vrs_values():
     assert compute_vrs("mid_vol") == 55
     assert compute_vrs("high_vol") == 80
     assert compute_vrs("unknown") == 55
+
+
+# ---------------------------------------------------------------------------
+# Concurrency (mcp 2.x runs sync tools on worker threads; rank_coins and
+# generate_report already fan out to thread pools)
+# ---------------------------------------------------------------------------
+
+class _Model:
+    """A picklable stand-in for a trained GaussianHMM."""
+    payload = list(range(20000))
+
+
+def test_failed_save_leaves_the_previous_model_intact(tmp_data_dir, monkeypatch):
+    """A save that dies half way must not truncate the model the next reader loads."""
+    hmm_regime._save_model(_Model(), {0: "low"}, n_samples=10)
+    before = hmm_regime._model_path().read_bytes()
+
+    def dies_half_way(obj, f, *args, **kwargs):
+        f.write(b"partial garbage")
+        raise OSError("disk full")
+
+    monkeypatch.setattr(hmm_regime.pickle, "dump", dies_half_way)
+    with pytest.raises(OSError):
+        hmm_regime._save_model(_Model(), {0: "high"}, n_samples=10)
+
+    assert hmm_regime._model_path().read_bytes() == before
+    assert hmm_regime.load_model() is not None
+    assert not [p for p in tmp_data_dir.iterdir() if p.name not in ("hmm_model.pkl", "hmm_model_meta.json")], \
+        "a failed save must not leave temp files behind"
+
+
+def test_a_reader_never_sees_a_torn_model_while_another_thread_saves(tmp_data_dir):
+    """The race, directly: open(..., 'wb') truncates, so a concurrent load saw an empty
+    file, got None, and the HMM silently fell back to rules until the next retrain."""
+    hmm_regime._save_model(_Model(), {0: "low"}, n_samples=10)
+    stop = threading.Event()
+    misses: list[int] = []
+
+    def writer() -> None:
+        while not stop.is_set():
+            hmm_regime._save_model(_Model(), {0: "low"}, n_samples=10)
+
+    def reader() -> None:
+        for _ in range(400):
+            if hmm_regime.load_model() is None:
+                misses.append(1)
+
+    w = threading.Thread(target=writer)
+    readers = [threading.Thread(target=reader) for _ in range(3)]
+    w.start()
+    for t in readers:
+        t.start()
+    for t in readers:
+        t.join()
+    stop.set()
+    w.join()
+    assert misses == []
+
+
+def test_concurrent_callers_retrain_once(tmp_data_dir, monkeypatch):
+    """Eight overlapping calls on a missing model train it once, not eight times."""
+    calls: list[int] = []
+
+    def slow_train(hv, atr, bbw):
+        time.sleep(0.15)
+        calls.append(1)
+        hmm_regime._save_model(_Model(), {0: "low"}, n_samples=10)
+
+    monkeypatch.setattr(hmm_regime, "train_hmm_model", slow_train)
+    results: list[bool] = []
+    start = threading.Barrier(8)
+
+    def call() -> None:
+        start.wait()
+        results.append(hmm_regime.maybe_retrain([1.0], [1.0], [1.0]))
+
+    threads = [threading.Thread(target=call) for _ in range(8)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert len(calls) == 1
+    assert sorted(results) == [False] * 7 + [True]

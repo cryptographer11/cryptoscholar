@@ -24,7 +24,7 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from cryptoscholar.tools.analyze import analyze_coin as _analyze_coin
 from cryptoscholar.tools.correlate import correlate_coins as _correlate_coins
@@ -44,7 +44,7 @@ from cryptoscholar.tools.watchlist import (
     watchlist_show as _watchlist_show,
 )
 
-mcp = FastMCP("CryptoScholar")
+mcp = MCPServer("CryptoScholar")
 
 
 @mcp.tool()

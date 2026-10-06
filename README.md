@@ -96,7 +96,13 @@ No API key required for market data. `ANTHROPIC_API_KEY` is needed for the `deba
 
 ## Quick start
 
-**Requirements:** Python 3.11+
+**Requirements:** Python 3.11+, `mcp` SDK 2.2+
+
+> **Unreleased — upgrading:** the server now runs on the `mcp` 2.x SDK (`MCPServer`, formerly `FastMCP`), so the minimum
+> is `mcp>=2.2.0,<3`. Claude Code 2.1.282+ opens connections with the 2026 `server/discover` probe, which `mcp` 1.x logged
+> as a "Failed to validate request" warning before falling back. Existing installs: `pip install -U 'mcp>=2.2.0,<3'`.
+> Tool names and input schemas are unchanged. Also fixed: the HMM regime model file is now written atomically and retrains
+> once under concurrent calls (2.x runs tools on worker threads).
 
 ```bash
 git clone https://github.com/cryptographer11/cryptoscholar.git
@@ -272,7 +278,7 @@ Stateless by design — no database, no scheduler. Every tool call fetches fresh
 
 ```
 Claude (MCP call)
-    └── server.py              FastMCP entry point
+    └── server.py              MCPServer entry point
          ├── tools/
          │    ├── analyze.py        Orchestrates fetch → indicators → regime → score
          │    ├── rank.py           Runs analyze_coin in parallel, sorts by TSS

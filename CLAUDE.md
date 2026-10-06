@@ -3,10 +3,10 @@
 ## What it is
 Open-source MCP server — 14 crypto TA + watchlist tools for Claude.
 Path: `/root/projects/cryptoscholar` | GitHub: `github.com/cryptographer11/cryptoscholar` | v0.6.0
-Registered in `~/.claude.json` mcpServers.
+Not registered as an MCP server on this VPS or run as a service (checked 2026-10-06) — it is developed here and installed by users elsewhere.
 
 ## Stack
-Python 3.11 · FastMCP · pandas-ta · httpx · SQLite (watchlist) · pytest (230 tests)
+Python 3.11 · mcp 2.x (`MCPServer`) · pandas-ta · httpx · SQLite (watchlist) · pytest (236 tests)
 
 ## Key File Paths
 | File | Purpose |
@@ -61,4 +61,19 @@ Python 3.11 · FastMCP · pandas-ta · httpx · SQLite (watchlist) · pytest (23
 - HMM auto-retrains on first `analyze_coin` / `rank_coins` call after 7-day stale threshold using current coin's data
 
 ## Recent Changes
+
+### 2026-10-06 — `mcp` SDK 1.26.0 → 2.3.0 (floor `>=2.2.0,<3`); HMM model file made thread-safe
+
+Same reason and steps as lumenar-mcp 2026-09-25: Claude Code opens with `server/discover`, which 1.x logs as "Failed to validate request". Reproduced
+with a 1.26 server against the 2.x client (stderr line present) and absent on 2.3.
+- `FastMCP` → `MCPServer` in `cryptoscholar/server.py` (stdio `run()` takes no arguments, nothing else to move). Tool names (15) and schemas unchanged.
+- **2.x runs sync tools on worker threads.** Audited shared state: SQLite opens a connection per call, the dict caches are single-operation, CoinGecko
+  already has `_RATE_LOCK`. **Real bug found:** `_save_model` wrote `hmm_model.pkl` in place (`open(..., "wb")` truncates), so a concurrent `load_model()`
+  read an empty file, returned None and the regime classifier fell back to rules while `hmm_model_meta.json` still said fresh — for 7 days. It predates 2.x
+  (`rank_coins`/`generate_report` already fan out to thread pools). Now atomic (temp file + `os.replace`; files are 0600) and `maybe_retrain` holds a lock with a re-check.
+- Tests: `tests/test_mcp_protocol.py` (first protocol-level tests: stdio, both handshakes, 15 pinned tools, a call and a bad call, no "Failed to validate");
+  3 concurrency tests in `tests/test_hmm_regime.py`. All three failed on the old code; removing the re-check or the atomic replace fails one each. 236 pass (was 230).
+- Not changed: `requirements.txt` lacks `hmmlearn`/`scikit-learn` that `pyproject.toml` has (pre-existing drift). Bandit `-ll` shows the same two findings as before
+  (default `/tmp` log dir, `pickle.load`). No systemd unit and no `~/.claude.json` entry for this server on this VPS (the "Registered in ~/.claude.json" line above is stale).
+- Version number not bumped and nothing pushed: the README carries an "Unreleased" note for you to turn into a release.
 

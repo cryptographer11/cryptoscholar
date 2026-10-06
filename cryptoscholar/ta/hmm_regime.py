@@ -4,6 +4,8 @@ import json
 import logging
 import os
 import pickle
+import tempfile
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -16,6 +18,10 @@ _RETRAIN_DAYS = 7
 _N_STATES = 3
 _INFERENCE_WINDOW = 30
 _MIN_TRAIN_SAMPLES = _N_STATES * 10
+
+# mcp 2.x runs sync tools on worker threads, and rank_coins / generate_report fan out to
+# thread pools, so two callers can reach maybe_retrain at once.
+_RETRAIN_LOCK = threading.Lock()
 
 
 def _data_dir() -> Path:
@@ -45,17 +51,35 @@ def load_model() -> Optional[tuple]:
         return None
 
 
+def _write_atomic(path: Path, write) -> None:
+    """Write via a temp file in the same directory, then os.replace.
+
+    open(path, "wb") truncates first, so a concurrent load_model() read an empty file, got
+    None, and the HMM fell back to rules until the next retrain (model_age_days reads the
+    meta file, which still said fresh). Readers now see the old file or the new one.
+    """
+    fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=path.name + ".", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "wb") as f:
+            write(f)
+        os.replace(tmp, path)
+    except BaseException:
+        try:
+            os.unlink(tmp)
+        except FileNotFoundError:
+            pass
+        raise
+
+
 def _save_model(model, state_map: dict[int, str], n_samples: int) -> None:
     _data_dir().mkdir(parents=True, exist_ok=True)
-    with open(_model_path(), "wb") as f:
-        pickle.dump({"model": model, "state_map": state_map}, f)
+    _write_atomic(_model_path(), lambda f: pickle.dump({"model": model, "state_map": state_map}, f))
     meta = {
         "trained_at": datetime.now(timezone.utc).isoformat(),
         "n_samples": n_samples,
         "n_states": _N_STATES,
     }
-    with open(_meta_path(), "w") as f:
-        json.dump(meta, f)
+    _write_atomic(_meta_path(), lambda f: f.write(json.dumps(meta).encode()))
 
 
 def model_age_days() -> Optional[float]:
@@ -169,13 +193,18 @@ def maybe_retrain(
     age = model_age_days()
     if age is not None and age < _RETRAIN_DAYS:
         return False
-    try:
-        train_hmm_model(hv_series, atr_pct_series, bbw_series)
-        logger.info("HMM model retrained (previous age: %s days)", age)
-        return True
-    except Exception as exc:
-        logger.warning("HMM retrain failed: %s", exc)
-        return False
+    with _RETRAIN_LOCK:
+        # Another thread may have retrained while this one waited for the lock.
+        age = model_age_days()
+        if age is not None and age < _RETRAIN_DAYS:
+            return False
+        try:
+            train_hmm_model(hv_series, atr_pct_series, bbw_series)
+            logger.info("HMM model retrained (previous age: %s days)", age)
+            return True
+        except Exception as exc:
+            logger.warning("HMM retrain failed: %s", exc)
+            return False
 
 
 def get_model_info() -> dict:

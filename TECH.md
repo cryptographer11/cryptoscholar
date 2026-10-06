@@ -2,7 +2,7 @@
 
 ## Stack
 - Python 3.11+
-- MCP SDK: `mcp` (FastMCP)
+- MCP SDK: `mcp` 2.x (`MCPServer`, formerly FastMCP)
 - TA: `pandas`, `pandas-ta`, `numpy`
 - HTTP: `httpx` (async-compatible, sync used)
 - AI: `anthropic` SDK
@@ -54,7 +54,7 @@ Add to `~/.claude/settings.json`:
 ```
 Claude → MCP call
            ↓
-        server.py (FastMCP)
+        server.py (MCPServer)
            ↓
      tools/analyze.py
            ↓

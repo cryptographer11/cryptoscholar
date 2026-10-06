@@ -6,7 +6,7 @@
 
 ## Backlog
 
-- [ ] Upgrade `mcp` SDK 1.26.0 → 2.x. Claude Code (2.1.282+, gradual rollout) opens with the 2026 `server/discover` probe; 1.x logs a harmless "Failed to validate request" stderr WARNING and falls back to `initialize`. Done for lumenar-mcp 2026-09-25 — its `CHANGELOG.md` entry lists what 2.x breaks (`FastMCP` → `MCPServer`, transport params to `run()`, sync tools on worker threads, `python-dotenv`/`httpx` no longer transitive). Open-source package: bumping `mcp>=2` changes the floor for every user, so release-note it. Found 2026-09-25.
+- [x] **Done 2026-10-06 (`mcp` 2.3.0, floor `>=2.2.0,<3`; see CLAUDE.md Recent Changes; README note is "Unreleased" until you cut a release).** Upgrade `mcp` SDK 1.26.0 → 2.x. Claude Code (2.1.282+, gradual rollout) opens with the 2026 `server/discover` probe; 1.x logs a harmless "Failed to validate request" stderr WARNING and falls back to `initialize`. Done for lumenar-mcp 2026-09-25 — its `CHANGELOG.md` entry lists what 2.x breaks (`FastMCP` → `MCPServer`, transport params to `run()`, sync tools on worker threads, `python-dotenv`/`httpx` no longer transitive). Open-source package: bumping `mcp>=2` changes the floor for every user, so release-note it. Found 2026-09-25.
 
 ### v0.7.0 — Analysis Report Generation
 - [ ] `generate_report` tool: 3-stage Cluster → Write → Assemble pipeline
