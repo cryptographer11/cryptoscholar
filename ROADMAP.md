@@ -51,6 +51,11 @@
 - Support for multi-coin comparison reports (e.g. "compare BTC, ETH, SOL")
 - Optional: output as JSON for downstream consumption
 
+## v0.7.1 (released) — mcp 2.x SDK
+- Requires `mcp>=2.2.0,<3` (`MCPServer`); Claude Code's `server/discover` probe no longer logs a validation warning
+- HMM model file written atomically, retrain once under concurrent calls
+- `requirements.txt` synced with `pyproject.toml`
+
 ## v0.8.0 — Research & News Context
 - `research_coin` tool: web search (DuckDuckGo + Jina reader) for news and narratives
 - Jina AI reader (`r.jina.ai`) converts URLs to clean markdown for LLM ingestion

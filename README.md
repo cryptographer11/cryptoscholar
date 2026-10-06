@@ -85,6 +85,14 @@ No API key required for market data. `ANTHROPIC_API_KEY` is needed for the `deba
 
 ---
 
+## What's new in v0.7.1
+
+- **Requires the `mcp` 2.x SDK (`mcp>=2.2.0,<3`).** The server now runs on `MCPServer` (formerly `FastMCP`). Claude Code 2.1.282+ opens connections with the 2026 `server/discover` probe, which `mcp` 1.x logged as a "Failed to validate request" warning before falling back. Existing installs: `pip install -U 'mcp>=2.2.0,<3'`. Tool names and input schemas are unchanged.
+- **Fix: regime model file is written atomically.** The HMM model was saved in place, so a concurrent call could read an empty file and silently fall back to the rule-based classifier until the next retrain; retraining now also runs once under concurrent calls (2.x runs tools on worker threads).
+- `requirements.txt` now lists `hmmlearn` and `scikit-learn`, which `pyproject.toml` already required.
+
+---
+
 ## What's new in v0.7.0
 
 - **`generate_report` tool (tool #15)** — 3-stage Cluster → Write → Assemble pipeline that produces a formatted markdown report for any coin or list of coins. Stage 1 groups TA signals into thematic clusters; Stage 2 uses Claude to write narrative sections; Stage 3 assembles a report with a key statistics table.
@@ -97,12 +105,6 @@ No API key required for market data. `ANTHROPIC_API_KEY` is needed for the `deba
 ## Quick start
 
 **Requirements:** Python 3.11+, `mcp` SDK 2.2+
-
-> **Unreleased — upgrading:** the server now runs on the `mcp` 2.x SDK (`MCPServer`, formerly `FastMCP`), so the minimum
-> is `mcp>=2.2.0,<3`. Claude Code 2.1.282+ opens connections with the 2026 `server/discover` probe, which `mcp` 1.x logged
-> as a "Failed to validate request" warning before falling back. Existing installs: `pip install -U 'mcp>=2.2.0,<3'`.
-> Tool names and input schemas are unchanged. Also fixed: the HMM regime model file is now written atomically and retrains
-> once under concurrent calls (2.x runs tools on worker threads).
 
 ```bash
 git clone https://github.com/cryptographer11/cryptoscholar.git

@@ -252,7 +252,7 @@ def generate_report(symbols: list[str], output_format: str = "markdown") -> dict
 
 def main() -> None:
     """Run the MCP server."""
-    logger.info("Starting CryptoScholar MCP server v0.7.0")
+    logger.info("Starting CryptoScholar MCP server v0.7.1")
     mcp.run()
 
 
