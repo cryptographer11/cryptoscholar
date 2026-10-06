@@ -62,7 +62,7 @@ Python 3.11 · mcp 2.x (`MCPServer`) · pandas-ta · httpx · SQLite (watchlist)
 
 ## Recent Changes
 
-### 2026-10-06 — `mcp` SDK 1.26.0 → 2.3.0 (floor `>=2.2.0,<3`) released as v0.7.1; HMM model file made thread-safe
+### 2026-10-06 — `mcp` SDK 1.26.0 → 2.3.0 (floor `>=2.2.0,<3`), tagged v0.7.1; HMM model file made thread-safe
 
 Same reason and steps as lumenar-mcp 2026-09-25: Claude Code opens with `server/discover`, which 1.x logs as "Failed to validate request". Reproduced
 with a 1.26 server against the 2.x client (stderr line present) and absent on 2.3.
@@ -75,5 +75,5 @@ with a 1.26 server against the 2.x client (stderr line present) and absent on 2.
   3 concurrency tests in `tests/test_hmm_regime.py`. All three failed on the old code; removing the re-check or the atomic replace fails one each. 236 pass (was 230).
 - Bandit `-ll` shows the same two findings as before
   (default `/tmp` log dir, `pickle.load`). No systemd unit and no `~/.claude.json` entry for this server on this VPS (the old "Registered in ~/.claude.json" line was stale and is corrected).
-- Released as **v0.7.1** (not 0.8.0: the roadmap reserves that for research/news). `requirements.txt` now matches `pyproject.toml`. PyPI upload not done (needs your PyPI token).
+- Tagged **v0.7.1** locally (not 0.8.0: the roadmap reserves that for research/news). `requirements.txt` now matches `pyproject.toml`. **Not pushed to GitHub and not on PyPI yet** (push: `git push origin main v0.7.1`; PyPI needs your token).
 
