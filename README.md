@@ -1,5 +1,7 @@
 # CryptoScholar
 
+<!-- mcp-name: io.github.cryptographer11/cryptoscholar -->
+
 > **Crypto technical analysis, directly inside Claude.** CryptoScholar is a Model Context Protocol (MCP) server that gives Claude real-time TA capabilities — no chart-switching, no copy-pasting data, no context loss.
 
 Ask Claude *"Is SOL set up for a swing trade?"* and it fetches live data from Binance, runs a full indicator suite, scores it, and delivers a grounded bull/bear debate — all in one response.
